@@ -1,20 +1,38 @@
+###################################################################
+##                   I M P O R T    P A C K A G E                ##
+###################################################################
 import pyvisa as visa
 import socket
 import time
 
+
+###################################################################
+##            F U N C T I O N    D E C L A R A T I O N           ##
+###################################################################
+def initialisation():
+    rm = visa.ResourceManager() # List of the VISA devices
+    print(rm.list_resources())
+    pwrSupply = rm.open_resource('USB0::0x2EC7::0x6700::802259073777170159::INSTR')
+    electLoad = rm.open_resource('USB0::0x1AB1::0x0E11::DL3A250700137::INSTR')
+    pwrSupply_info = pwrSupply.query('*IDN?') # Read information about power supply
+    electLoad_info = electLoad.query('*IDN?') # Read information about DC Load
+    
+
+
+
+
+###################################################################
+##                   G L O B A L   C O N S T A N T               ##
+###################################################################
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 5000  # Port to listen on (non-privileged ports are > 1023)
 
-rm = visa.ResourceManager() # List of the VISA devices
-print(rm.list_resources())
-pwrSupply = rm.open_resource('USB0::0x2EC7::0x6700::802259073777170159::INSTR')
-electLoad = rm.open_resource('USB0::0x1AB1::0x0E11::DL3A250700137::INSTR')
-pwrSupply_info = pwrSupply.query('*IDN?') # Read information about power supply
-electLoad_info = electLoad.query('*IDN?') # Read information about DC Load
 
-print(pwrSupply_info)
-print(electLoad_info)
 
+
+###################################################################
+##            S T R U C T    D E C L A R A T I O N               ##
+###################################################################
 flagStt = "Waiting"
 flagDvc = "None"
 flagLoad = "None"
@@ -41,6 +59,21 @@ Nc = 0 #number of cycle counts
 Vmax_t = 4.5
 Vmin_t = 3.0
 Imax_t = 0.5
+
+
+
+
+
+initialisation()
+
+
+print(pwrSupply_info)
+print(electLoad_info)
+
+
+
+
+
 
 
 
@@ -370,3 +403,9 @@ while True:
 
                 sendMeasPSEL = 'measPSEL;'+str(round(elapsedTimePSEL,1))+';'+voltPSEL.split('\n')[0]+';'+ampPSEL.split('\n')[0]+';'+str(QcompPSEL)+';'+flagCyc+';'+ flagType
                 conn.sendall(sendMeasPSEL.encode())
+
+
+
+
+
+
