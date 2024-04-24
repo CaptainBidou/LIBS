@@ -5,150 +5,200 @@ import pyvisa as visa
 import socket
 import time
 
-
-###################################################################
-##            F U N C T I O N    D E C L A R A T I O N           ##
-###################################################################
-def initialisation():
-    rm = visa.ResourceManager() # List of the VISA devices
-    print(rm.list_resources())
-    pwrSupply = rm.open_resource('USB0::0x2EC7::0x6700::802259073777170159::INSTR')
-    electLoad = rm.open_resource('USB0::0x1AB1::0x0E11::DL3A250700137::INSTR')
-    pwrSupply_info = pwrSupply.query('*IDN?') # Read information about power supply
-    electLoad_info = electLoad.query('*IDN?') # Read information about DC Load
-    
-
-
-
-
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
 ###################################################################
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 5000  # Port to listen on (non-privileged ports are > 1023)
+PWRSUPPLY = 'USB0::0x2EC7::0x6700::802259073777170159::INSTR'
+ELECTLOAD = 'USB0::0x1AB1::0x0E11::DL3A250700137::INSTR'
+
+###################################################################
+##                   G L O B A L   V A R I A B L E S             ##
+###################################################################
 
 
+###################################################################
+##            F U N C T I O N    D E C L A R A T I O N           ##
+###################################################################
+def calculIt(value):
+    return float(value)*Cell.Qn/100
+
+def calculImax(It):
+    return 1.1*It
+
+def calculQtype(It):
+    return round(It/Cell.Qn,1)
+
+def messageMeasureSerialize(profile,flag):
+    if(profile == "Ch"):
+        sendMeas = 'measPS;'
+    if(profile == "Dch"):
+        sendMeas = 'measEL;'
+    sendMeas    =   sendMeas+ '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + flag.flagType
+    return sendMeas
 
 
 ###################################################################
 ##            S T R U C T    D E C L A R A T I O N               ##
 ###################################################################
-flagStt = "Waiting"
-flagDvc = "None"
-flagLoad = "None"
-flagSour = "None"
-flagType = "None"
-flagCyc = "None"
+class MeasuringDevice():
+    def __init__(self, host, port, pwrsuplly, electload):
+        self.host = host
+        self.port = port
+        self.pwrSupply=None
+        self.electLoad=None
+        self.pwrSupply_info=None
+        self.electLoad_info=None
+        self.pwrSupplyId = pwrsuplly
+        self.electLoadId = electload
+
+    def initialisation(self):
+        rm = visa.ResourceManager()
+        print(rm.list_resources())
+        self.pwrSupply = rm.open_resource(self.pwrSupplyId)
+        self.electLoad = rm.open_resource(self.electLoadId)
+        self.pwrSupply_info = self.pwrSupply.query('*IDN?')
+        self.electLoad_info = self.electLoad.query('*IDN?')
+    
+    def configPS(self,It):
+        self.pwrSupply.write("SOUR:VOLTage:LEVel " + str(Cell.Vmax))
+        self.pwrSupply.write("SOUR:CURRent:LEVel " + str(It))
+    
+    def configEL(self,It):
+        self.electLoad.write("SOUR:FUNC CURR")
+        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
+        self.electLoad.write("SOUR:CURR:RANG 4")
+        self.electLoad.write("SOUR:CURR:SLEW 0.01")
+        self.electLoad.write("SOUR:CURR:VON " + str(Cell.Vmin))
+        self.electLoad.write("SOUR:CURR:VLIM " + str(Cell.Vmax))
+        self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
+        
+
+
+class Cell():
+    def __init__(self):
+        # LIB: NCR18650BD
+        self.Qn = 2.9 #Rated capacity
+        self.Vn = 3.6 #Nominal voltage
+        self.Vmax = 4.2 #Max voltage (Charging)
+        self.Vmin = 2.5 #Min voltage (Discharging)
+        self.QcompPS = 0 #Capacity computed to charge
+        self.QcompEL = 0 #Capacity computed to discharge
+        self.QcompPSEL = 0.35*2.9
+        self.Icut = self.qn/50 #Cut current
+
+
+class Flag():
+    def __init__(self):
+        self.flagStt = "Waiting"
+        self.flagDvc = "None"
+        self.flagLoad = "None"
+        self.flagSour = "None"
+        self.flagType = "None"
+        self.flagCyc = "None"
+    #TODO : complete the flag class with methods to change the flags according to the state of the flag in the code below
+    
+    def setFlagSourConst(self):
+        self.flagSour = "Const"
+    def setFlagSourPulse(self):
+        self.flagSour = "Pulse"
+
+    def setFlagLoadConst(self):
+        self.flagLoad = "Const"
+    def setFlagLoadPulse(self):
+        self.flagLoad = "Pulse"
+    
+    def setFlagDvcPS(self):
+        self.flagDvc = "PS"
+    def setFlagDvcEL(self):
+        self.flagDvc = "EL"
+
+    def setFlagType(self,profile,mode,Q_type):
+        self.flagType = profile + "-" + mode + "-" + str(Q_type) + "C"
+
+
 # Description of the battery model
-# LIB: NCR18650BD
-Qn = 2.9 #Rated capacity
-Vn = 3.6 #Nominal voltage
-Vmax = 4.2 #Max voltage (Charging)
-Vmin = 2.5 #Min voltage (Discharging)
-QcompPS = 0 #Capacity computed to charge
-QcompEL = 0 #Capacity computed to discharge
-QcompPSEL = 0.35*2.9
 
-# Charge + Discharge Parameters
-sf = 0.25 #safe factor
-Tdch = 0 # Discharge time
-Tch = 0 # Charge time
-Trest = 0 #Resting time
-N = 0 # Number of cycles
-Nc = 0 #number of cycle counts
-Vmax_t = 4.5
-Vmin_t = 3.0
-Imax_t = 0.5
+class ChargeDischarge():
+    def __init__(self):
+        self.Tdch = 0 # Discharge time
+        self.Tch = 0 # Charge time
+        self.Trest = 0 #Resting time
+        self.N = 0 # Number of cycles
+        self.Nc = 0 #number of cycle counts
+        self.Vmax_t = 4.5
+        self.Vmin_t = 3.0
+        self.Imax_t = 0.5
+        self.sf = 0.25 #safe factor 
+   
+    def configChDch(self,profile,mode,flag,value,measuringDevice):
+
+        It = calculIt(value)
+        Q_type = calculQtype(It)
+
+        if(profile == "Ch" and mode == "Const"): #Configuring Charge in constant mode
+            flag.setFlagSourConst()
+            flag.setFlagDvcPS()
+            measuringDevice.configPS(It) 
+
+        if(profile == "Ch" and mode == "Pulse"): #Configuring Charge in constant mode
+            flag.setFlagSourPulse()
+            flag.setFlagDvcPS()
+            measuringDevice.configPS(It)
+            print(measuringDevice.pwrSupply.query("CURR? MIN"))#for what ?
+
+        if(profile == "Dch" and mode == "Const"): #Configuring Discharge in constant mode
+            flag.setFlagLoadConst()
+            flag.setFlagDvcEL()
+            measuringDevice.configEL(It)
+            
+        if(profile == "Dch" and mode == "Pulse"): #Configuring Discharge in pulse mode
+            flag.setFlagLoadPulse()
+            flag.setFlagDvcEL()
+            measuringDevice.configEL(It)
+            modeElectLoad = measuringDevice.electLoad.query('SOUR:FUNC?')#for what ?
+        
+        flag.setFlagType(profile,mode,Q_type)    
+        return messageMeasureSerialize(profile,flag).encode()
+
+#instanciate the classes
+measuringDevice = MeasuringDevice(HOST, PORT, PWRSUPPLY, ELECTLOAD)
+cdParameters = ChargeDischarge()
+cell = Cell()
+flag = Flag()
 
 
+#initialise the measuring devices
+measuringDevice.initialisation()
 
-
-
-initialisation()
-
-
-print(pwrSupply_info)
-print(electLoad_info)
-
-
-
-
-
-
+# print the information of the measuring devices
+print(measuringDevice.pwrSupply_info)
+print(measuringDevice.electLoad_info)
 
 
 while True:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        #TODO : change it into a function
         s.bind((HOST, PORT)) #Start TCP communication
         s.listen() # Waiting some query of the client 
         conn, addr = s.accept() #Accept query of the  client
+
         with conn:
             data = conn.recv(1024) #Read data sent by client
+
+            #TODO : change it into a function 
             msg_nodeRed = data.decode("utf-8") #Decode binary to string
             infos = msg_nodeRed.split(';')
+
             profile = infos[0] #Ch - charge, Dch - discharge, Start, Stop, Meas
             value = infos[1] #Percentual of currente based on Qn (It = values*Qn/100)
             mode = infos[2] #Constant or Pulsed or Cycled
-            if(profile == "Ch" and mode == "Const"): #Configuring Charge in constant mode
-                flagSour = "Const"
-                It = float(value)*Qn/100 #Charging current
-                Icut = Qn/50
-                pwrSupply.write("SOUR:VOLTage:LEVel " + str(Vmax))
-                pwrSupply.write("SOUR:CURRent:LEVel " + str(It))
-                flagDvc = "PS"
-                Q_type = round(It/Qn,1)
-                flagType = "Ch-Const-" + str(Q_type) + "C"
-                sendMeasPS = 'measPS;'+ '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + flagType
-                conn.sendall(sendMeasPS.encode())
+            
 
-            if(profile == "Ch" and mode == "Pulse"): #Configuring Charge in constant mode
-                flagSour = "Pulse"
-                It = float(value)*Qn/100 #Charging current
-                Icut = Qn/50
-                pwrSupply.write("SOUR:VOLTage:LEVel " + str(Vmax))
-                pwrSupply.write("SOUR:CURRent:LEVel " + str(It))
-                print(pwrSupply.query("CURR? MIN"))
-                flagDvc = "PS"
-                Q_type = round(It/Qn,1)
-                flagType = "Ch-Pulse-" + str(Q_type) + "C"
-                sendMeasPS = 'measPS;'+ '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + flagType
-                conn.sendall(sendMeasPS.encode())
-
-            if(profile == "Dch" and mode == "Const"): #Configuring Discharge in constant mode
-                flagLoad = "Const"
-                It = float(value)*Qn/100
-                Imax = 1.1*It
-                electLoad.write("SOUR:FUNC CURR")
-                electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
-                electLoad.write("SOUR:CURR:RANG 4")
-                electLoad.write("SOUR:CURR:SLEW 0.01")
-                electLoad.write("SOUR:CURR:VON " + str(Vmin))
-                electLoad.write("SOUR:CURR:VLIM " + str(Vmax))
-                electLoad.write("SOUR:CURR:ILIM " + str(Imax))
-                flagDvc = "EL"
-                Q_type = round(It/Qn,1)
-                flagType = "Dch-Const-" + str(Q_type) + "C"
-                sendMeasEL = 'measEL;'+ '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + flagType
-                conn.sendall(sendMeasEL.encode())
-
-            if(profile == "Dch" and mode == "Pulse"): #Configuring Discharge in pulse mode
-                flagLoad = "Pulse"
-                It = float(value)*Qn/100
-                Imax = 1.1*It
-                electLoad.write("SOUR:FUNC CURR")
-                electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
-                electLoad.write("SOUR:CURR:RANG 4")
-                electLoad.write("SOUR:CURR:SLEW 0.01")
-                electLoad.write("SOUR:CURR:VON " + str(Vmin))
-                electLoad.write("SOUR:CURR:VLIM " + str(Vmax))
-                electLoad.write("SOUR:CURR:ILIM " + str(Imax))
-                modeElectLoad = electLoad.query('SOUR:FUNC?')
-                flagDvc = "EL"
-                flagType = "Pulse"
-                Q_type = round(It/Qn,1)
-                flagType = "Dch-Pulse-" + str(Q_type) + "C"
-                sendMeasEL = 'measEL;'+ '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + flagType
-                conn.sendall(sendMeasEL.encode())
+            #Ch / Dch  -  Pulse / Const
+            sendMeasure = cdParameters.configChDch(profile,mode,flag,value,measuringDevice)
+            conn.sendall(sendMeasure)   
 
             if(profile == "DchCh" and mode[0:5] == "Cycle"):
                 N = int(mode[5])
@@ -159,9 +209,10 @@ while True:
                 print(Trest)
                 Imax = 1.1*It
 
-                pwrSupply.write("SOUR:VOLTage:LEVel " + str(Vmax))
-                pwrSupply.write("SOUR:CURRent:LEVel " + str(It))
 
+                
+                measuringDevice.configPS(It)
+                
                 electLoad.write("SOUR:CURR:RANG 40")
                 electLoad.write("SOUR:FUNC CURR")
                 electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
@@ -375,7 +426,7 @@ while True:
                     if(flagCyc == "RRestDch" and time.time()-RestDchTimer > Trest):
                         flagCyc = "Ch"
                         RestDchTimer = 0
-                        Nc = Nc + 1
+                        Nc += 1
                         print(Nc)
                 elif(Nc>=2):
                     print("Acabou")
