@@ -16,6 +16,7 @@ ELECTLOAD = 'USB0::0x1AB1::0x0E11::DL3A250700137::INSTR'
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
+startTimePS = None
 
 
 ###################################################################
@@ -32,16 +33,22 @@ def calculQtype(It):
 
 def messageMeasureSerialize(profile,flag):
     if(profile == "Ch"):
-        sendMeas = 'measPS;'
+        sendMeas = 'measPS;'+'0'
     if(profile == "Dch"):
-        sendMeas = 'measEL;'
-    sendMeas    =   sendMeas+ '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + flag.flagType
+        sendMeas = 'measEL;'+'0'
+    if(profile == "DchCh"):
+        sendMeas = 'measPSEL;'+'0'
+    if(profile == "StopPS"):
+        sendMeas = 'measPS;'+ str(round(time.time()-startTimePS,1))
+    sendMeas    =   sendMeas+';' + '0' + ';' + '0' + ';' + '0' + ';' + '0' + ';' + flag.flagType
     return sendMeas
 
 
 ###################################################################
 ##            S T R U C T    D E C L A R A T I O N               ##
 ###################################################################
+
+
 class MeasuringDevice():
     def __init__(self, host, port, pwrsuplly, electload):
         self.host = host
@@ -74,12 +81,65 @@ class MeasuringDevice():
         self.electLoad.write("SOUR:CURR:VLIM " + str(Cell.Vmax))
         self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
         
+    def configEL40(self,It,chargeDischarge):
+        self.electLoad.write("SOUR:CURR:RANG 40")
+        self.electLoad.write("SOUR:FUNC CURR")
+        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
+        self.electLoad.write("SOUR:CURR:SLEW 0.01")
+        self.electLoad.write("SOUR:CURR:VON " + str(Cell.Vmin))
+        self.electLoad.write("SOUR:CURR:VLIM " + str(chargeDischarge.Vmax_t))
+        self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
 
+    def configPS(self,output):
+        self.pwrSupply.write('OUTPut:STATe '+str(output))
+
+    def configEL(self,output):
+        self.electLoad.write('INPut:STATe '+str(output))
+    
+    def configPSEL(self,Output,Input):
+        self.configPS(Output)
+        self.configEL(Input)
+
+    def configMeasureWrite(self,device):
+        if(device == "PS"):
+            self.pwrSupply.write('MEASure:VOLTage?')
+            self.pwrSupply.write('MEASure:CURRent?')
+        if(device == "EL"):
+            self.electLoad.write('MEASure:VOLTage?')
+            self.electLoad.write('MEASure:CURRent?')
+    
+    def configMeasureQuery(self,device,measure):
+        if(device == "PS"):
+            if(measure == "VOLT"):
+                return self.pwrSupply.query('MEASure:VOLTage?')
+            if(measure == "CURR"):
+                return self.pwrSupply.query('MEASure:CURRent?')
+        if(device == "EL"):
+            if(measure == "VOLT"):
+                return self.electLoad.query('MEASure:VOLTage?')
+            if(measure == "CURR"):
+                return self.electLoad.query('MEASure:CURRent?')
+            
+    def configPSStatusQuery(self):
+        return self.pwrSupply.query('STATus:QUEStionable:CONDition?')
+    def configELStatusQuery(self):
+        return self.electLoad.query('STAT:QUES:COND?')
+    
+    def configELModeQuery(self):
+        return self.electLoad.query('SOUR:FUNC?')
+    
+    def configELWrite(self):
+        self.electLoad.write('STAT:QUES:ENAB 32271')
+
+    
+    
+ 
+ ########################################################################       
 
 class Cell():
     def __init__(self):
         # LIB: NCR18650BD
-        self.Qn = 2.9 #Rated capacity
+        self.Qn = 3.08  #Rated capacity
         self.Vn = 3.6 #Nominal voltage
         self.Vmax = 4.2 #Max voltage (Charging)
         self.Vmin = 2.5 #Min voltage (Discharging)
@@ -87,7 +147,7 @@ class Cell():
         self.QcompEL = 0 #Capacity computed to discharge
         self.QcompPSEL = 0.35*2.9
         self.Icut = self.qn/50 #Cut current
-
+########################################################################
 
 class Flag():
     def __init__(self):
@@ -113,10 +173,18 @@ class Flag():
         self.flagDvc = "PS"
     def setFlagDvcEL(self):
         self.flagDvc = "EL"
+    def setFlagDvcSEL(self):
+        self.flagDvc = "PSEL"
 
     def setFlagType(self,profile,mode,Q_type):
-        self.flagType = profile + "-" + mode + "-" + str(Q_type) + "C"
+        if(mode == None):
+            self.flagType = profile + "-" + str(Q_type) + "C"
+        else:
+            self.flagType = profile + "-" + mode + "-" + str(Q_type) + "C"
 
+    def setflagCycCh(self):
+        self.flagCyc = "Ch"#flagCyc is Dch to discharge, Ch to charge and Rest to resting (RestDch, RestCh)
+########################################################################
 
 # Description of the battery model
 
@@ -132,7 +200,7 @@ class ChargeDischarge():
         self.Imax_t = 0.5
         self.sf = 0.25 #safe factor 
    
-    def configChDch(self,profile,mode,flag,value,measuringDevice):
+    def handlerChDch(self,profile,mode,flag,value,measuringDevice,cdParameters):
 
         It = calculIt(value)
         Q_type = calculQtype(It)
@@ -142,25 +210,45 @@ class ChargeDischarge():
             flag.setFlagDvcPS()
             measuringDevice.configPS(It) 
 
-        if(profile == "Ch" and mode == "Pulse"): #Configuring Charge in constant mode
+        elif(profile == "Ch" and mode == "Pulse"): #Configuring Charge in constant mode
             flag.setFlagSourPulse()
             flag.setFlagDvcPS()
             measuringDevice.configPS(It)
             print(measuringDevice.pwrSupply.query("CURR? MIN"))#for what ?
 
-        if(profile == "Dch" and mode == "Const"): #Configuring Discharge in constant mode
+        elif(profile == "Dch" and mode == "Const"): #Configuring Discharge in constant mode
             flag.setFlagLoadConst()
             flag.setFlagDvcEL()
             measuringDevice.configEL(It)
             
-        if(profile == "Dch" and mode == "Pulse"): #Configuring Discharge in pulse mode
+        elif(profile == "Dch" and mode == "Pulse"): #Configuring Discharge in pulse mode
             flag.setFlagLoadPulse()
             flag.setFlagDvcEL()
             measuringDevice.configEL(It)
             modeElectLoad = measuringDevice.electLoad.query('SOUR:FUNC?')#for what ?
-        
+        elif(profile == "DchCh" and mode[0:5] == "Cycle"): #Configuring Discharge in pulse mode
+            N = int(mode[5])
+            profile += "-Cyc"
+            mode = None
+            #TODO : create a function 
+            cdParameters.Tdch = 600 #(Qn*sf/It)*3600 #In seconds
+            cdParameters.Tch = 600#(Qn*sf/It)*3600 #In seconds
+
+            cdParameters.Trest = cdParameters.Tch
+            print(cdParameters.Trest)
+            measuringDevice.configPS(It)
+            measuringDevice.configEL40(It,cdParameters)
+            flag.setFlagDvcPSEL() 
+            flag.setflagCycCh()
+        else :
+            return None 
+            
         flag.setFlagType(profile,mode,Q_type)    
         return messageMeasureSerialize(profile,flag).encode()
+    
+########################################################################
+
+
 
 #instanciate the classes
 measuringDevice = MeasuringDevice(HOST, PORT, PWRSUPPLY, ELECTLOAD)
@@ -179,7 +267,9 @@ print(measuringDevice.electLoad_info)
 
 while True:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+
         #TODO : change it into a function
+
         s.bind((HOST, PORT)) #Start TCP communication
         s.listen() # Waiting some query of the client 
         conn, addr = s.accept() #Accept query of the  client
@@ -190,270 +280,228 @@ while True:
             #TODO : change it into a function 
             msg_nodeRed = data.decode("utf-8") #Decode binary to string
             infos = msg_nodeRed.split(';')
-
             profile = infos[0] #Ch - charge, Dch - discharge, Start, Stop, Meas
             value = infos[1] #Percentual of currente based on Qn (It = values*Qn/100)
             mode = infos[2] #Constant or Pulsed or Cycled
             
 
             #Ch / Dch  -  Pulse / Const
-            sendMeasure = cdParameters.configChDch(profile,mode,flag,value,measuringDevice)
-            conn.sendall(sendMeasure)   
-
-            if(profile == "DchCh" and mode[0:5] == "Cycle"):
-                N = int(mode[5])
-                It = float(value)*Qn/100
-                Tdch = 600 #(Qn*sf/It)*3600 #In seconds
-                Tch = 600#(Qn*sf/It)*3600 #In seconds
-                Trest = Tch
-                print(Trest)
-                Imax = 1.1*It
-
-
-                
-                measuringDevice.configPS(It)
-                
-                electLoad.write("SOUR:CURR:RANG 40")
-                electLoad.write("SOUR:FUNC CURR")
-                electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
-                electLoad.write("SOUR:CURR:SLEW 0.01")
-                electLoad.write("SOUR:CURR:VON " + str(Vmin))
-                electLoad.write("SOUR:CURR:VLIM " + str(Vmax_t))
-                electLoad.write("SOUR:CURR:ILIM " + str(Imax))
-
-                Q_type = round(It/Qn,1)
-
-                flagDvc = "PSEL"
-                flagCyc = "Ch" #flagCyc is Dch to discharge, Ch to charge and Rest to resting (RestDch, RestCh)
-
-                flagType = "DchCh-Cyc" + "-" + str(Q_type) + "C"
-                sendMeasPS = 'measPSEL;'+ '0' + ';' + '0' + ';' + '0' + ';' + str(QcompPSEL) + ';' + '0' + ';' + flagType
-                conn.sendall(sendMeasPS.encode())
+            sendMeasure = cdParameters.handlerChDch(profile,mode,flag,value,measuringDevice,cdParameters)
+            if sendMeasure != None:
+                conn.sendall(sendMeasure)   
 
             #Conditions to charge moment (PS = Power supply)
-            if(profile == "StartPS" and (flagSour == "Const" or flagSour == "Pulse")):
-                flagStt = "StartPS"
+            if(profile == "StartPS" and (flag.flagSour == "Const" or flag.flagSour == "Pulse")):
+                flag.flagStt = "StartPS"
                 startTimePS = time.time()
-                if(flagSour == "Pulse"):
+                if(flag.flagSour == "Pulse"):
                     startTimePulsePS = time.time()
                     stateSignal = True
             
             if(profile == "StopPS"):
-                flagStt = "StopPS"
-                flagSour = "None"
-                flagLoad = "None"
-                flagDvc = "None"
-                flagType = "None"
-                pwrSupply.write('OUTPut:STATe 0')
-                sendMeasPS = 'measPS;'+ str(round(time.time()-startTimePS,1)) + ';' + str(0) + ';' + str(0) + ';' + str(0) + ';' + str(0) + ';' + flagType
-                conn.sendall(sendMeasPS.encode())
+                flag.flagStt = "StopPS"
+                flag.flagSour = "None"
+                flag.flagLoad = "None"
+                flag.flagDvc = "None"
+                flag.flagType = "None"
+                measuringDevice.configPS(0)
+                conn.sendall(messageMeasureSerialize(profile,flag).encode())
 
-            if(flagStt == "StartPS" and flagDvc == "PS" and profile == "Meas"):
+            if(flag.flagStt == "StartPS" and flag.flagDvc == "PS" and profile == "Meas"):
                 elapsedTimePS = time.time() - startTimePS
-                
-                voltPwrSupply = pwrSupply.query('MEASure:VOLTage?')
-                voltPwrSupply = str(round(float(voltPwrSupply),3))
+                voltPwrSupply = str(round(float(measuringDevice.configMeasureQuery("PS","VOLT")),3))
+                cell.QcompPS = cell.QcompPS + float(measuringDevice.configMeasureQuery("PS","CURR"))/3600
+                ampePwrSupply = str(round(float(measuringDevice.configMeasureQuery("PS","CURR")),3))
+                cell.QcompPS = round(float(cell.QcompPS),8)
 
-                ampePwrSupply = pwrSupply.query('MEASure:CURRent?')
-
-                QcompPS = QcompPS + float(ampePwrSupply)/3600
-
-                ampePwrSupply = str(round(float(ampePwrSupply),3))
-                QcompPS = round(float(QcompPS),8)
-
-                if(elapsedTimePS >= 2 and flagSour == "Const"):
-                    pwrSupply.write('OUTPut:STATe 1')
+                if(elapsedTimePS >= 2 and flag.flagSour == "Const"):
+                    measuringDevice.configPS(1)
                     if(elapsedTimePS >=25):
-                        ImeasCut = pwrSupply.query('MEASure:CURRent?')
-                        if(float(ImeasCut) <= Icut): #QcompPS >= Qn or
-                            pwrSupply.write('OUTPut:STATe 0')
-                            flagStt = "StopPS"
+                        if(float(measuringDevice.configMeasureQuery("PS","CURR")) <= cell.Icut): #QcompPS >= Qn or
+                            measuringDevice.configPS(0)
+                            flag.flagStt = "StopPS"
                             voltPwrSupply = '0'
                             ampePwrSupply = '0'
-                            QcompPS = 0
+                            cell.QcompPS = 0
 
-                if(elapsedTimePS >= 2 and flagSour == "Pulse"):
+                if(elapsedTimePS >= 2 and flag.flagSour == "Pulse"):
                     if(stateSignal == True):
-                        pwrSupply.write('OUTPut:STATe 1')
+                        measuringDevice.configPS(1)
                     elif(stateSignal == False):
-                        pwrSupply.write('OUTPut:STATe 0')
+                        measuringDevice.configPS(0)
                     pulseWidth = time.time() - startTimePulsePS
                     if(pulseWidth >= 300):
                         stateSignal = not stateSignal
                         startTimePulsePS = time.time()
-                    if(QcompPS >= Qn): 
-                        pwrSupply.write('OUTPut:STATe 0')
-                        flagStt = "StopPS"
-                        QcompPS = 0
+                    if(cell.QcompPS >= cell.Qn): 
+                        measuringDevice.configPS(0)
+                        flag.flagStt = "StopPS"
+                        cell.QcompPS = 0
                         voltPwrSupply = '0'
                         ampePwrSupply = '0'
                         modePwrSupply = '0'
                  
-                modePwrSupply = pwrSupply.query('STATus:QUEStionable:CONDition?')
-                sendMeasPS = 'measPS;'+ str(round(elapsedTimePS,0)) + ';' + voltPwrSupply.split('\n')[0] + ';' + ampePwrSupply.split('\n')[0] + ';' + modePwrSupply.split('\n')[0] + ';' + str(QcompPS) + ';' + flagType
+                #TODO : make a function for the serialisation 
+                modePwrSupply = measuringDevice.configPSStatusQuery()
+                sendMeasPS = 'measPS;'+ str(round(elapsedTimePS,0)) + ';' + voltPwrSupply.split('\n')[0] + ';' + ampePwrSupply.split('\n')[0] + ';' + modePwrSupply.split('\n')[0] + ';' + str(cell.QcompPS) + ';' + flag.flagType
                 conn.sendall(sendMeasPS.encode())
 
             #Conditions to discharge moment (EL = Eletronic Load)
-            if(profile == "StartEL" and (flagLoad == "Const" or flagLoad == "Pulse")):
-                flagStt = "StartEL"
-                electLoad.write('STAT:QUES:ENAB 32271')
-                modeElectLoad = electLoad.query('SOUR:FUNC?')
+            if(profile == "StartEL" and (flag.flagLoad == "Const" or flag.flagLoad == "Pulse")):
+                flag.flagStt = "StartEL"
+                measuringDevice.configELWrite()
+                modeElectLoad = measuringDevice.configELModeQuery()
                 startTimeEL = time.time()
-                if(flagLoad == "Pulse"):
+                if(flag.flagLoad == "Pulse"):
                     startTimePulseEL = time.time()
                     stateSignal = True
             
             if(profile == "StopEL"):
-                flagStt = "StopEL"
-                flagLoad = "None"
-                flagDvc = "None"
-                flagType = "None"
-                electLoad.write('INPut:STATe 0')
+                flag.flagStt = "StopEL"
+                flag.flagLoad = "None"
+                flag.flagDvc = "None"
+                flag.flagType = "None"
+                measuringDevice.configEL(0)
                 modeElectLoad = 'Off\n'
-                sendMeasEL = 'measEL;'+ str(round(time.time()-startTimeEL,1)) + ';' + str(0) + ';' + str(0) + ';' + str(0) + ';' + str(0) + ';' + modeElectLoad.split('\n')[0] + ';' + flagType
+
+                #TODO : make a function for the serialisation
+                sendMeasEL = 'measEL;'+ str(round(time.time()-startTimeEL,1)) + ';' + str(0) + ';' + str(0) + ';' + str(0) + ';' + str(0) + ';' + modeElectLoad.split('\n')[0] + ';' + flag.flagType
                 conn.sendall(sendMeasEL.encode())
 
-            if(flagStt == "StartEL" and flagDvc == "EL" and profile == "Meas"):
+            if(flag.flagStt == "StartEL" and flag.flagDvc == "EL" and profile == "Meas"):
                 elapsedTimeEL = time.time() - startTimeEL
-                voltElectLoad = electLoad.query('MEASure:VOLTage?')
+                voltElectLoad = measuringDevice.configMeasureQuery("EL","VOLT")
                 voltElectLoad = str(round(float(voltElectLoad),3))
 
-                ampeElectLoad = electLoad.query('MEASure:CURRent?')
+                ampeElectLoad = measuringDevice.configMeasureQuery("EL","CURR")
 
-                QcompEL = QcompEL + float(ampeElectLoad)/3600
+                cell.QcompEL = cell.QcompEL + float(ampeElectLoad)/3600
 
                 ampeElectLoad = str(round(float(ampeElectLoad),3))
-                QcompEL = round(float(QcompEL),8)
+                cell.QcompEL = round(float(cell.QcompEL),8)
 
-                if(elapsedTimeEL >= 2 and flagLoad == "Const"):
-                    electLoad.write('INPut:STATe 1')
-                    if(float(voltElectLoad) <= Vmin): # QcompEL >= 0.65*Qn or  QcompEL >= Qn or
-                        electLoad.write('INPut:STATe 0')
-                        flagStt = "StopEL"
-                        QcompEL = 0
+                if(elapsedTimeEL >= 2 and flag.flagLoad == "Const"):
+                    measuringDevice.configEL(1)
+                    if(float(voltElectLoad) <= cell.Vmin): # QcompEL >= 0.65*Qn or  QcompEL >= Qn or
+                        measuringDevice.configEL(0)
+                        flag.flagStt = "StopEL"
+                        cell.QcompEL = 0
                         voltElectLoad = '0'
                         ampeElectLoad = '0'
                         modeElectLoad = 'Off\n'
                         # time.sleep(0.2)
 
-                if(elapsedTimeEL >= 2 and flagLoad == "Pulse"):
+                if(elapsedTimeEL >= 2 and flag.flagLoad == "Pulse"):
                     if(stateSignal == True):
-                        electLoad.write('INPut:STATe 1')
+                        measuringDevice.configEL(1)
                     elif(stateSignal == False):
-                        electLoad.write('INPut:STATe 0')
+                        measuringDevice.configEL(0)
                     pulseWidth = time.time() - startTimePulseEL
                     if(pulseWidth >= 300):
                         stateSignal = not stateSignal
                         startTimePulseEL = time.time()
-                    if(float(voltElectLoad) <= Vmin): 
-                        electLoad.write('INPut:STATe 0')
-                        flagStt = "StopEL"
-                        QcompEL = 0
+                    if(float(voltElectLoad) <= cell.Vmin): 
+                        measuringDevice.configEL(0)
+                        flag.flagStt = "StopEL"
+                        cell.QcompEL = 0
                         voltElectLoad = '0'
                         ampeElectLoad = '0'
                         modeElectLoad = 'Off\n'
                         # time.sleep(0.2)
 
-                statusElectLoad = electLoad.query('STAT:QUES:COND?')
-                modeElectLoad = electLoad.query('SOUR:FUNC?')
-                sendMeasEL = 'measEL;'+ str(round(elapsedTimeEL,0)) + ';' + voltElectLoad.split('\n')[0] + ';' + ampeElectLoad.split('\n')[0] + ';' + statusElectLoad.split('\n')[0] + ';' + str(QcompEL) + ';' + modeElectLoad.split('\n')[0] + ';' + flagType
+                statusElectLoad = measuringDevice.configELStatusQuery()
+                modeElectLoad = measuringDevice.configELModeQuery()
+                #TODO : make a function for the serialisation
+                sendMeasEL = 'measEL;'+ str(round(elapsedTimeEL,0)) + ';' + voltElectLoad.split('\n')[0] + ';' + ampeElectLoad.split('\n')[0] + ';' + statusElectLoad.split('\n')[0] + ';' + str(cell.QcompEL) + ';' + modeElectLoad.split('\n')[0] + ';' + flag.flagType
                 conn.sendall(sendMeasEL.encode())
+        
+            # #Conditions to Cycle test (PSEL = Eletronic Load): Single cycle: Dch->Rest->Ch->Rest
+            # if(profile == "StartPSEL"):
+            #     flag.flagStt = "StartPSEL"
+            #     startTimePSEL = time.time()
+            #     DchTimer = 0
+            #     ChTimer = 0
+            #     RestDchTimer = 0
+            #     RestChTimer = 0
+            #     voltPS = 0
+            #     voltES = 0
+            #     voltPSEL = 0
+            #     ampPS = 0
+            #     ampES = 0
+            #     ampPSEL = 0
 
-            #Conditions to Cycle test (PSEL = Eletronic Load): Single cycle: Dch->Rest->Ch->Rest
-            if(profile == "StartPSEL"):
-                flagStt = "StartPSEL"
-                startTimePSEL = time.time()
-                DchTimer = 0
-                ChTimer = 0
-                RestDchTimer = 0
-                RestChTimer = 0
-                voltPS = 0
-                voltES = 0
-                voltPSEL = 0
-                ampPS = 0
-                ampES = 0
-                ampPSEL = 0
+            # if(profile == "StopPSEL"):
+            #     flag.flagStt = "StopPSEL"
+            #     flag.flagLoad = "None"
+            #     flag.flagDvc = "None"
+            #     flag.flagType = "None"
+            #     flag.flagCyc = "None"
+            #     Nc = 0
+            #     QcompPSEL = QcompPSEL
+            #     measuringDevice.configPSEL(0,0)
 
-            if(profile == "StopPSEL"):
-                flagStt = "StopPSEL"
-                flagLoad = "None"
-                flagDvc = "None"
-                flagType = "None"
-                flagCyc = "None"
-                Nc = 0
-                QcompPSEL = QcompPSEL
-                pwrSupply.write('OUTPut:STATe 0')
-                electLoad.write('INPut:STATe 0')
+            # if(flag.flagStt == "StartPSEL" and flag.flagDvc == "PSEL" and profile == "Meas"):
+            #     #Start discharge
+            #     elapsedTimePSEL = time.time() - startTimePSEL
+            #     if((time.time()-startTimePSEL > 5)  and Nc<2):
+            #         #Start Charge
+            #         if(flag.flagCyc == "Ch"):
+            #             measuringDevice.configPSEL(1,0)
+            #             ChTimer = time.time()
+            #             flag.flagCyc = "RCh" #-->Run Ch
+            #         if(flag.flagCyc == "RCh" and (time.time()-ChTimer > Tch)):
+            #             flag.flagCyc = "RestCh"
+            #             ChTimer = 0
+            #             measuringDevice.configPS(0)
+            #         #Start resting charge
+            #         if(flag.flagCyc == "RestCh"):
+            #             measuringDevice.configPSEL(0,0)
+            #             RestChTimer = time.time()
+            #             flag.flagCyc = "RRestCh" #-->Run RestCh
+            #         if(flag.flagCyc == "RRestCh" and time.time()-RestChTimer > Trest):
+            #             flag.flagCyc = "Dch"
+            #             RestChTimer = 0
+            #         if(flag.flagCyc == "Dch"):
+            #             measuringDevice.configPSEL(0,1)
+            #             DchTimer = time.time()
+            #             flag.flagCyc = "RDch" #-->Run Dch
+            #         if(flag.flagCyc == "RDch" and (time.time()-DchTimer > Tdch or float(voltPSEL)<= Vmin)):
+            #             flag.flagCyc = "RestDch"
+            #             DchTimer = 0
+            #             measuringDevice.configPSEL(0,0)
+            #         #Start resting discharge
+            #         if(flag.flagCyc == "RestDch"):
+            #             measuringDevice.configPSEL(0,0)
+            #             RestDchTimer = time.time()
+            #             flag.flagCyc = "RRestDch" #-->Run RestDch
+            #         if(flag.flagCyc == "RRestDch" and time.time()-RestDchTimer > Trest):
+            #             flag.flagCyc = "Ch"
+            #             RestDchTimer = 0
+            #             Nc += 1
+            #             print(Nc)
+            #     elif(Nc>=2):
+            #         print("Acabou")
+            #         measuringDevice.configPSEL(0,0)
+            #         flag.flagStt = "StopPSEL"
+            #         flag.flagCyc = "Done"
+            #         Nc = 0
 
-            if(flagStt == "StartPSEL" and flagDvc == "PSEL" and profile == "Meas"):
-                #Start discharge
-                elapsedTimePSEL = time.time() - startTimePSEL
-                if((time.time()-startTimePSEL > 5)  and Nc<2):
-                    #Start Charge
-                    if(flagCyc == "Ch"):
-                        pwrSupply.write('OUTPut:STATe 1')
-                        electLoad.write('INPut:STATe 0')
-                        ChTimer = time.time()
-                        flagCyc = "RCh" #-->Run Ch
-                    if(flagCyc == "RCh" and (time.time()-ChTimer > Tch)):
-                        flagCyc = "RestCh"
-                        ChTimer = 0
-                        pwrSupply.write('OUTPut:STATe 0')
-                    #Start resting charge
-                    if(flagCyc == "RestCh"):
-                        pwrSupply.write('OUTPut:STATe 0')
-                        electLoad.write('INPut:STATe 0')
-                        RestChTimer = time.time()
-                        flagCyc = "RRestCh" #-->Run RestCh
-                    if(flagCyc == "RRestCh" and time.time()-RestChTimer > Trest):
-                        flagCyc = "Dch"
-                        RestChTimer = 0
-                    if(flagCyc == "Dch"):
-                        pwrSupply.write('OUTPut:STATe 0')
-                        electLoad.write('INPut:STATe 1')
-                        DchTimer = time.time()
-                        flagCyc = "RDch" #-->Run Dch
-                    if(flagCyc == "RDch" and (time.time()-DchTimer > Tdch or float(voltPSEL)<= Vmin)):
-                        flagCyc = "RestDch"
-                        DchTimer = 0
-                        electLoad.write('INPut:STATe 0')
-                    #Start resting discharge
-                    if(flagCyc == "RestDch"):
-                        pwrSupply.write('OUTPut:STATe 0')
-                        electLoad.write('INPut:STATe 0')
-                        RestDchTimer = time.time()
-                        flagCyc = "RRestDch" #-->Run RestDch
-                    if(flagCyc == "RRestDch" and time.time()-RestDchTimer > Trest):
-                        flagCyc = "Ch"
-                        RestDchTimer = 0
-                        Nc += 1
-                        print(Nc)
-                elif(Nc>=2):
-                    print("Acabou")
-                    pwrSupply.write('OUTPut:STATe 0')
-                    electLoad.write('INPut:STATe 0')
-                    flagStt = "StopPSEL"
-                    flagCyc = "Done"
-                    Nc = 0
-                # Measures
-                voltPS = pwrSupply.query('MEASure:VOLTage?')
-                ampPS = pwrSupply.query('MEASure:CURRent?')
+            #     # Measures
+            #     measuringDevice.configMeasureWrite("PS")
+            #     measuringDevice.configMeasureWrite("EL")
 
-                voltEL = electLoad.query('MEASure:VOLTage?')
-                ampEL = electLoad.query('MEASure:CURRent?')
+            #     if(flag.flagCyc == "Dch" or flag.flagCyc == "RDch" or flag.flagCyc == "RestDch"  or flag.flagCyc == "RRestDch"):
+            #         voltPSEL = str(round(float(voltEL),3))
+            #         ampPSEL = str(round(float(ampEL),3))
+            #     elif(flag.flagCyc == "Ch" or flag.flagCyc == "RCh" or flag.flagCyc == "RestCh"  orflag. flagCyc == "RRestCh"):
+            #         voltPSEL = str(round(float(voltPS),3))
+            #         ampPSEL = str(round(-float(ampPS),3))
 
-                if(flagCyc == "Dch" or flagCyc == "RDch" or flagCyc == "RestDch"  or flagCyc == "RRestDch"):
-                    voltPSEL = str(round(float(voltEL),3))
-                    ampPSEL = str(round(float(ampEL),3))
-                elif(flagCyc == "Ch" or flagCyc == "RCh" or flagCyc == "RestCh"  or flagCyc == "RRestCh"):
-                    voltPSEL = str(round(float(voltPS),3))
-                    ampPSEL = str(round(-float(ampPS),3))
+            #     QcompPSEL = QcompPSEL - float(ampPSEL)/3600
+            #     QcompPSEL = round(float(QcompPSEL),8)
 
-                QcompPSEL = QcompPSEL - float(ampPSEL)/3600
-                QcompPSEL = round(float(QcompPSEL),8)
-
-                sendMeasPSEL = 'measPSEL;'+str(round(elapsedTimePSEL,1))+';'+voltPSEL.split('\n')[0]+';'+ampPSEL.split('\n')[0]+';'+str(QcompPSEL)+';'+flagCyc+';'+ flagType
-                conn.sendall(sendMeasPSEL.encode())
+            #     sendMeasPSEL = 'measPSEL;'+str(round(elapsedTimePSEL,1))+';'+voltPSEL.split('\n')[0]+';'+ampPSEL.split('\n')[0]+';'+str(QcompPSEL)+';'+flagCyc+';'+ flagType
+            #     conn.sendall(sendMeasPSEL.encode())
 
 
 
