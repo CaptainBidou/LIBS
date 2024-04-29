@@ -17,19 +17,19 @@ ELECTLOAD = 'USB0::0x1AB1::0x0E11::DL3A250700137::INSTR'
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
 startTimePS = None
-
+cell = None
 
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
 ###################################################################
 def calculIt(value):
-    return float(value)*Cell.Qn/100
+    return float(value)*cell.Qn/100
 
 def calculImax(It):
     return 1.1*It
 
 def calculQtype(It):
-    return round(It/Cell.Qn,1)
+    return round(It/cell.Qn,1)
 
 def messageMeasureSerialize(profile,flag):
     if(profile == "Ch"):
@@ -68,17 +68,19 @@ class MeasuringDevice():
         self.pwrSupply_info = self.pwrSupply.query('*IDN?')
         self.electLoad_info = self.electLoad.query('*IDN?')
     
-    def configPS(self,It):
-        self.pwrSupply.write("SOUR:VOLTage:LEVel " + str(Cell.Vmax))
+    def configPSStart(self,It):
+        print(It)
+        self.pwrSupply.write("SOUR:VOLTage:LEVel " + str(cell.Vmax))
         self.pwrSupply.write("SOUR:CURRent:LEVel " + str(It))
+        
     
-    def configEL(self,It):
+    def configELStart(self,It):
         self.electLoad.write("SOUR:FUNC CURR")
         self.electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
         self.electLoad.write("SOUR:CURR:RANG 4")
         self.electLoad.write("SOUR:CURR:SLEW 0.01")
-        self.electLoad.write("SOUR:CURR:VON " + str(Cell.Vmin))
-        self.electLoad.write("SOUR:CURR:VLIM " + str(Cell.Vmax))
+        self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
+        self.electLoad.write("SOUR:CURR:VLIM " + str(cell.Vmax))
         self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
         
     def configEL40(self,It,chargeDischarge):
@@ -86,7 +88,7 @@ class MeasuringDevice():
         self.electLoad.write("SOUR:FUNC CURR")
         self.electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
         self.electLoad.write("SOUR:CURR:SLEW 0.01")
-        self.electLoad.write("SOUR:CURR:VON " + str(Cell.Vmin))
+        self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
         self.electLoad.write("SOUR:CURR:VLIM " + str(chargeDischarge.Vmax_t))
         self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
 
@@ -146,7 +148,7 @@ class Cell():
         self.QcompPS = 0 #Capacity computed to charge
         self.QcompEL = 0 #Capacity computed to discharge
         self.QcompPSEL = 0.35*2.9
-        self.Icut = self.qn/50 #Cut current
+        self.Icut = self.Qn/50 #Cut current
 ########################################################################
 
 class Flag():
@@ -203,29 +205,30 @@ class ChargeDischarge():
     def handlerChDch(self,profile,mode,flag,value,measuringDevice,cdParameters):
 
         It = calculIt(value)
+        print(It)
         Q_type = calculQtype(It)
 
         if(profile == "Ch" and mode == "Const"): #Configuring Charge in constant mode
             flag.setFlagSourConst()
             flag.setFlagDvcPS()
-            measuringDevice.configPS(It) 
+            measuringDevice.configPSStart(It) 
 
         elif(profile == "Ch" and mode == "Pulse"): #Configuring Charge in constant mode
             flag.setFlagSourPulse()
             flag.setFlagDvcPS()
-            measuringDevice.configPS(It)
+            measuringDevice.configPSStart(It)
             print(measuringDevice.pwrSupply.query("CURR? MIN"))#for what ?
 
         elif(profile == "Dch" and mode == "Const"): #Configuring Discharge in constant mode
             flag.setFlagLoadConst()
             flag.setFlagDvcEL()
-            measuringDevice.configEL(It)
+            measuringDevice.configELStart(It)
             
         elif(profile == "Dch" and mode == "Pulse"): #Configuring Discharge in pulse mode
             flag.setFlagLoadPulse()
             flag.setFlagDvcEL()
-            measuringDevice.configEL(It)
-            modeElectLoad = measuringDevice.electLoad.query('SOUR:FUNC?')#for what ?
+            measuringDevice.configELStart(It)
+            modeElectLoad = measuringDevice.electLoad.query('SOUR:FUNC?')#for what ? Nothing
         elif(profile == "DchCh" and mode[0:5] == "Cycle"): #Configuring Discharge in pulse mode
             N = int(mode[5])
             profile += "-Cyc"
@@ -236,7 +239,7 @@ class ChargeDischarge():
 
             cdParameters.Trest = cdParameters.Tch
             print(cdParameters.Trest)
-            measuringDevice.configPS(It)
+            measuringDevice.configPSStart(It)
             measuringDevice.configEL40(It,cdParameters)
             flag.setFlagDvcPSEL() 
             flag.setflagCycCh()
@@ -245,7 +248,7 @@ class ChargeDischarge():
             
         flag.setFlagType(profile,mode,Q_type)    
         return messageMeasureSerialize(profile,flag).encode()
-    
+  
 ########################################################################
 
 
@@ -286,9 +289,11 @@ while True:
             
 
             #Ch / Dch  -  Pulse / Const
-            sendMeasure = cdParameters.handlerChDch(profile,mode,flag,value,measuringDevice,cdParameters)
-            if sendMeasure != None:
-                conn.sendall(sendMeasure)   
+            if profile == "Dch" or profile =="Ch":
+                print(profile)
+                sendMeasure = cdParameters.handlerChDch(profile,mode,flag,value,measuringDevice,cdParameters)
+                if sendMeasure != None:
+                    conn.sendall(sendMeasure)   
 
             #Conditions to charge moment (PS = Power supply)
             if(profile == "StartPS" and (flag.flagSour == "Const" or flag.flagSour == "Pulse")):
