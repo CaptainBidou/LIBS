@@ -5,6 +5,7 @@ import pyvisa as visa
 import socket
 import time
 import random
+import random
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -100,6 +101,15 @@ class MeasuringDevice():
         self.electLoad.write("SOUR:CURR:SLEW 0.01")
         self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
         self.electLoad.write("SOUR:CURR:VLIM " + str(cell.Vmax))
+        self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
+    
+    def configELRand(self,It,RandAmpl):
+        self.electLoad.write("SOUR:FUNC CURR")
+        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(It))
+        self.electLoad.write("SOUR:CURR:RANG "+str(RandAmpl))
+        self.electLoad.write("SOUR:CURR:SLEW 0.01")
+        self.electLoad.write("SOUR:CURR:VON " + str(Cell.Vmin))
+        self.electLoad.write("SOUR:CURR:VLIM " + str(Cell.Vmax))
         self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
         
     def configEL40(self,It,chargeDischarge):
@@ -388,7 +398,6 @@ while True:
                 measuringDevice.configELWrite()
                 modeElectLoad = measuringDevice.configELModeQuery()
                 startTimeEL = time.time()
-
                 if(flag.flagLoad == "Pulse"):
                     startTimePulseEL = time.time()
                     stateSignal = True
