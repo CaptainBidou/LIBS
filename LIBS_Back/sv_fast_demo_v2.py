@@ -4,6 +4,8 @@
 import pyvisa as visa
 import socket
 import time
+import random
+import random
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -18,6 +20,9 @@ ELECTLOAD = 'USB0::0x1AB1::0x0E11::DL3A250700137::INSTR'
 ###################################################################
 startTimePS = None
 cell = None
+RandTrest = 0
+RandTime = 0
+RandAmpl = 0
 
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
@@ -82,7 +87,16 @@ class MeasuringDevice():
         self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
         self.electLoad.write("SOUR:CURR:VLIM " + str(cell.Vmax))
         self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
-        
+    
+    def configELRand(self,RandAmpl):
+        self.electLoad.write("SOUR:FUNC CURR")
+        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(RandAmpl))
+        self.electLoad.write("SOUR:CURR:RANG 40")
+        self.electLoad.write("SOUR:CURR:SLEW 0.01")
+        self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
+        self.electLoad.write("SOUR:CURR:VLIM " + str(cell.Vmax))
+        self.electLoad.write("SOUR:CURR:ILIM 5")
+
     def configEL40(self,It,chargeDischarge):
         self.electLoad.write("SOUR:CURR:RANG 40")
         self.electLoad.write("SOUR:FUNC CURR")
@@ -165,11 +179,15 @@ class Flag():
         self.flagSour = "Const"
     def setFlagSourPulse(self):
         self.flagSour = "Pulse"
+    def setFlagSourRand(self):
+        self.flagSour = "Random"
 
     def setFlagLoadConst(self):
         self.flagLoad = "Const"
     def setFlagLoadPulse(self):
         self.flagLoad = "Pulse"
+    def setFlagLoadRand(self):
+        self.flagLoad = "Random"
     
     def setFlagDvcPS(self):
         self.flagDvc = "PS"
@@ -205,7 +223,7 @@ class ChargeDischarge():
     def handlerChDch(self,profile,mode,flag,value,measuringDevice,cdParameters):
 
         It = calculIt(value)
-        print(It)
+        #print(It)
         Q_type = calculQtype(It)
 
         if(profile == "Ch" and mode == "Const"): #Configuring Charge in constant mode
@@ -229,6 +247,14 @@ class ChargeDischarge():
             flag.setFlagDvcEL()
             measuringDevice.configELStart(It)
             modeElectLoad = measuringDevice.electLoad.query('SOUR:FUNC?')#for what ? Nothing
+
+
+        elif(profile == "Dch" and mode == "Random"):
+            flag.setFlagLoadRand()
+            flag.setFlagDvcEL()
+            measuringDevice.configELRand(random.uniform(0.1,1.5))
+
+
         elif(profile == "DchCh" and mode[0:5] == "Cycle"): #Configuring Discharge in pulse mode
             N = int(mode[5])
             profile += "-Cyc"
@@ -352,7 +378,7 @@ while True:
                 conn.sendall(sendMeasPS.encode())
 
             #Conditions to discharge moment (EL = Eletronic Load)
-            if(profile == "StartEL" and (flag.flagLoad == "Const" or flag.flagLoad == "Pulse")):
+            if(profile == "StartEL" and (flag.flagLoad == "Const" or flag.flagLoad == "Pulse" or flag.flagLoad == "Random")):
                 flag.flagStt = "StartEL"
                 measuringDevice.configELWrite()
                 modeElectLoad = measuringDevice.configELModeQuery()
@@ -360,7 +386,16 @@ while True:
                 if(flag.flagLoad == "Pulse"):
                     startTimePulseEL = time.time()
                     stateSignal = True
-            
+
+                if(flag.flagLoad == "Random"):
+                    print("I choose the valors randomly")
+                    startTimeRandEL = time.time()
+                    stateSignal = True 
+                    #RandTrest = round(random.uniform(15*60,30*60))#generate random number between and 15*60 and 30*60
+                    RandTime = round(random.uniform(30,120))#generate random number between and 30 and 120
+                    print("Time pulse :" + str(RandTime))
+                    
+
             if(profile == "StopEL"):
                 flag.flagStt = "StopEL"
                 flag.flagLoad = "None"
@@ -405,6 +440,7 @@ while True:
                     if(pulseWidth >= 300):
                         stateSignal = not stateSignal
                         startTimePulseEL = time.time()
+
                     if(float(voltElectLoad) <= cell.Vmin): 
                         measuringDevice.configEL(0)
                         flag.flagStt = "StopEL"
@@ -413,6 +449,38 @@ while True:
                         ampeElectLoad = '0'
                         modeElectLoad = 'Off\n'
                         # time.sleep(0.2)
+                
+                if (elapsedTimeEL >= 2 and flag.flagLoad == "Random"):#Resting time ??
+                    if(stateSignal == True):
+                        measuringDevice.configEL(1)
+                    elif(stateSignal == False):
+                        measuringDevice.configEL(0)
+                    pulseWidth = time.time() - startTimeRandEL
+                    if(pulseWidth >= RandTime and stateSignal == True):
+                        stateSignal = not stateSignal
+                        startTimeRandEL = time.time()
+                        #RandAmpl=random.uniform(0.1,1.5)
+                        RandTrest = round(random.uniform(5*60,10*60))#generate random number between and 15*60 and 30*60
+                        #RandTime = round(random.uniform(30,120))#generate random number between and 30 and 120
+                        print("Trest :" +str(RandTrest))
+                        measuringDevice.configELRand(RandAmpl)
+                    if(pulseWidth >= RandTrest and stateSignal == False):
+                        stateSignal = not stateSignal
+                        startTimeRandEL = time.time()
+                        RandAmpl=random.uniform(0.1,1.5)
+                        #RandTrest = round(random.uniform(15*60,30*60))#generate random number between and 15*60 and 30*60
+                        RandTime = round(random.uniform(30,120))#generate random number between and 30 and 120
+                        measuringDevice.configELRand(RandAmpl)
+                        print("Time pulse :" + str(RandTime))
+                    if(float(voltElectLoad) <= cell.Vmin):
+                        measuringDevice.configEL(0)
+                        flag.flagStt = "StopEL"
+                        cell.QcompEL = 0
+                        voltElectLoad = '0'
+                        ampeElectLoad = '0'
+                        modeElectLoad = 'Off\n'
+                        # time.sleep(0.2)
+
 
                 statusElectLoad = measuringDevice.configELStatusQuery()
                 modeElectLoad = measuringDevice.configELModeQuery()
