@@ -145,13 +145,13 @@ def drawGraph():
     #csv file :
         #time;voltage;current;idk;idk
     fig, ax = plt.subplots()
-    with open('datasets/BID002_CycRand_08052024.csv', 'r') as file:
+    with open('LIBS_Back/datasets/BID002_CycRand_08052024.csv', 'r') as file:
         data = pd.read_csv(file, delimiter=';')
     timeTab = []
     voltageTab = []
     currentTab = []
     for i in range(len(data.values)):
-        timeTab.append(data.values[i][0])
+        timeTab.append(i)
         voltageTab.append(data.values[i][1])
         currentTab.append(data.values[i][2])
     ax.plot(timeTab, voltageTab, label='voltage')
@@ -167,7 +167,7 @@ def drawGraph():
 def addDataset():
     #datasets/BID002_CycRand_08052024.csv
     #0: time, 1: voltage, 2: current
-    with open('datasets/BID002_CycRand_08052024.csv', 'r') as file:
+    with open('LIBS_Back/datasets/BID002_CycRand_08052024.csv', 'r') as file:
         data = pd.read_csv(file, delimiter=';')
     #choose the action
     actions = getActions()
@@ -190,6 +190,3 @@ def addDataset():
     for i in range(len(data.values)):
         createMeasure(id_test,data.values[i][0], data.values[i][2], data.values[i][1], 0, 0)
     return
-
-
-drawGraph()

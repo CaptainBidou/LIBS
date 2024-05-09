@@ -24,6 +24,7 @@ RandAmpl = 0
 RandTime = 0
 RandTrest = 0
 hppc = None
+id_test = None
 
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
@@ -70,12 +71,13 @@ class MeasuringDevice():
         self.electLoadId = electload
 
     def initialisation(self):
-        rm = visa.ResourceManager()
-        print(rm.list_resources())
-        self.pwrSupply = rm.open_resource(self.pwrSupplyId)
-        self.electLoad = rm.open_resource(self.electLoadId)
-        self.pwrSupply_info = self.pwrSupply.query('*IDN?')
-        self.electLoad_info = self.electLoad.query('*IDN?')
+        return
+        # rm = visa.ResourceManager()
+        # print(rm.list_resources())
+        # self.pwrSupply = rm.open_resource(self.pwrSupplyId)
+        # self.electLoad = rm.open_resource(self.electLoadId)
+        # self.pwrSupply_info = self.pwrSupply.query('*IDN?')
+        # self.electLoad_info = self.electLoad.query('*IDN?')
 
     def configPSStart(self, It):
         print(It)
@@ -293,7 +295,7 @@ class ChargeDischarge():
             N = int(mode[5])
             profile += "-Cyc"
             mode = None
-            #TODO : create a function 
+            #TODO : create a function
             cdParameters.Tdch = 600  #(Qn*sf/It)*3600 #In seconds
             cdParameters.Tch = 600  #(Qn*sf/It)*3600 #In seconds
 
@@ -421,6 +423,9 @@ while True:
                 sendMeasPS = 'measPS;' + str(round(elapsedTimePS, 0)) + ';' + voltPwrSupply.split('\n')[0] + ';' + \
                              ampePwrSupply.split('\n')[0] + ';' + modePwrSupply.split('\n')[0] + ';' + str(
                     cell.QcompPS) + ';' + flag.flagType
+                databaseBuild.createMeasure(id_test, round(elapsedTimePS, 0), ampePwrSupply.split('\n')[0],
+                                            voltPwrSupply.split('\n')[0], 0, 0)
+
                 conn.sendall(sendMeasPS.encode())
 
             #Conditions to discharge moment (EL = Eletronic Load)
@@ -461,6 +466,7 @@ while True:
                 #TODO : make a function for the serialisation
                 sendMeasEL = 'measEL;' + str(round(time.time() - startTimeEL, 1)) + ';' + str(0) + ';' + str(
                     0) + ';' + str(0) + ';' + str(0) + ';' + modeElectLoad.split('\n')[0] + ';' + flag.flagType
+                databaseBuild.createMeasure(id_test, round(time.time() - startTimeEL, 1), 0, 0, 0, 0)
                 conn.sendall(sendMeasEL.encode())
 
             if (flag.flagStt == "StartEL" and flag.flagDvc == "EL" and profile == "Meas"):
@@ -562,6 +568,8 @@ while True:
                 sendMeasEL = 'measEL;' + str(round(elapsedTimeEL, 0)) + ';' + voltElectLoad.split('\n')[0] + ';' + \
                              ampeElectLoad.split('\n')[0] + ';' + statusElectLoad.split('\n')[0] + ';' + str(
                     cell.QcompEL) + ';' + modeElectLoad.split('\n')[0] + ';' + flag.flagType
+                databaseBuild.createMeasure(id_test, round(elapsedTimeEL, 0), ampeElectLoad.split('\n')[0],
+                                            voltElectLoad.split('\n')[0], 0, 0)
                 conn.sendall(sendMeasEL.encode())
 
 
