@@ -88,9 +88,9 @@ class MeasuringDevice():
         self.electLoad.write("SOUR:CURR:VLIM " + str(cell.Vmax))
         self.electLoad.write("SOUR:CURR:ILIM " + str(calculImax(It)))
     
-    def configELRand(self,It,RandAmpl):
+    def configELRand(self,RandAmpl):
         self.electLoad.write("SOUR:FUNC CURR")
-        self.electLoad.write("SOUR:CURR:LEV:IMM " +str(RandAmpl))
+        self.electLoad.write("SOUR:CURR:LEV:IMM " +str(RandAmpl*cell.Qn))
         self.electLoad.write("SOUR:CURR:RANG 4")
         self.electLoad.write("SOUR:CURR:SLEW 0.01")
         self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
@@ -252,7 +252,7 @@ class ChargeDischarge():
         elif(profile == "Dch" and mode == "Random"):
             flag.setFlagLoadRand()
             flag.setFlagDvcEL()
-            measuringDevice.configELRand(It,random.uniform(0.1,1.5))
+            measuringDevice.configELRand(random.uniform(0.1,1.5))
 
 
         elif(profile == "DchCh" and mode[0:5] == "Cycle"): #Configuring Discharge in pulse mode
@@ -464,6 +464,7 @@ while True:
                         startTimeRandEL = time.time()
                         RandTime = round(random.uniform(30,120))#generate random number between and 30 and 12
                         RandAmpl = random.uniform(0.1,1.5)#generate random number between and 0.1 and 1.5
+                        measuringDevice.configELRand(RandAmpl)
                         print("time pulsing : "+str(RandTime))
                     if(float(voltElectLoad) <= cell.Vmin):
                         measuringDevice.configEL(0)
