@@ -5,7 +5,7 @@ import pyvisa as visa
 import socket
 import time
 import random
-import random
+
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -20,9 +20,9 @@ ELECTLOAD = 'USB0::0x1AB1::0x0E11::DL3A250700137::INSTR'
 ###################################################################
 startTimePS = None
 cell = None
-RandTrest = 0
-RandTime = 0
 RandAmpl = 0
+RandTime = 0
+RandTrest = 0
 
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
@@ -90,13 +90,13 @@ class MeasuringDevice():
     
     def configELRand(self,RandAmpl):
         self.electLoad.write("SOUR:FUNC CURR")
-        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(RandAmpl))
-        self.electLoad.write("SOUR:CURR:RANG 40")
+        self.electLoad.write("SOUR:CURR:LEV:IMM " +str(RandAmpl*cell.Qn))
+        self.electLoad.write("SOUR:CURR:RANG 4")
         self.electLoad.write("SOUR:CURR:SLEW 0.01")
         self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
         self.electLoad.write("SOUR:CURR:VLIM " + str(cell.Vmax))
         self.electLoad.write("SOUR:CURR:ILIM 5")
-
+        
     def configEL40(self,It,chargeDischarge):
         self.electLoad.write("SOUR:CURR:RANG 40")
         self.electLoad.write("SOUR:FUNC CURR")
@@ -388,13 +388,12 @@ while True:
                     stateSignal = True
 
                 if(flag.flagLoad == "Random"):
-                    print("I choose the valors randomly")
                     startTimeRandEL = time.time()
                     stateSignal = True 
-                    #RandTrest = round(random.uniform(15*60,30*60))#generate random number between and 15*60 and 30*60
+                    #RandAmpl = random.uniform(0.1,1.5)#generate random number between and 0.1 and 1.5
+                    #RandTrest = random.uniform(15*60,30*60)#generate random number between and 15*60 and 30*60
                     RandTime = round(random.uniform(30,120))#generate random number between and 30 and 120
-                    print("Time pulse :" + str(RandTime))
-                    
+                    print("time pulsing : "+str(RandTime))
 
             if(profile == "StopEL"):
                 flag.flagStt = "StopEL"
@@ -487,97 +486,5 @@ while True:
                 #TODO : make a function for the serialisation
                 sendMeasEL = 'measEL;'+ str(round(elapsedTimeEL,0)) + ';' + voltElectLoad.split('\n')[0] + ';' + ampeElectLoad.split('\n')[0] + ';' + statusElectLoad.split('\n')[0] + ';' + str(cell.QcompEL) + ';' + modeElectLoad.split('\n')[0] + ';' + flag.flagType
                 conn.sendall(sendMeasEL.encode())
-        
-            # #Conditions to Cycle test (PSEL = Eletronic Load): Single cycle: Dch->Rest->Ch->Rest
-            # if(profile == "StartPSEL"):
-            #     flag.flagStt = "StartPSEL"
-            #     startTimePSEL = time.time()
-            #     DchTimer = 0
-            #     ChTimer = 0
-            #     RestDchTimer = 0
-            #     RestChTimer = 0
-            #     voltPS = 0
-            #     voltES = 0
-            #     voltPSEL = 0
-            #     ampPS = 0
-            #     ampES = 0
-            #     ampPSEL = 0
-
-            # if(profile == "StopPSEL"):
-            #     flag.flagStt = "StopPSEL"
-            #     flag.flagLoad = "None"
-            #     flag.flagDvc = "None"
-            #     flag.flagType = "None"
-            #     flag.flagCyc = "None"
-            #     Nc = 0
-            #     QcompPSEL = QcompPSEL
-            #     measuringDevice.configPSEL(0,0)
-
-            # if(flag.flagStt == "StartPSEL" and flag.flagDvc == "PSEL" and profile == "Meas"):
-            #     #Start discharge
-            #     elapsedTimePSEL = time.time() - startTimePSEL
-            #     if((time.time()-startTimePSEL > 5)  and Nc<2):
-            #         #Start Charge
-            #         if(flag.flagCyc == "Ch"):
-            #             measuringDevice.configPSEL(1,0)
-            #             ChTimer = time.time()
-            #             flag.flagCyc = "RCh" #-->Run Ch
-            #         if(flag.flagCyc == "RCh" and (time.time()-ChTimer > Tch)):
-            #             flag.flagCyc = "RestCh"
-            #             ChTimer = 0
-            #             measuringDevice.configPS(0)
-            #         #Start resting charge
-            #         if(flag.flagCyc == "RestCh"):
-            #             measuringDevice.configPSEL(0,0)
-            #             RestChTimer = time.time()
-            #             flag.flagCyc = "RRestCh" #-->Run RestCh
-            #         if(flag.flagCyc == "RRestCh" and time.time()-RestChTimer > Trest):
-            #             flag.flagCyc = "Dch"
-            #             RestChTimer = 0
-            #         if(flag.flagCyc == "Dch"):
-            #             measuringDevice.configPSEL(0,1)
-            #             DchTimer = time.time()
-            #             flag.flagCyc = "RDch" #-->Run Dch
-            #         if(flag.flagCyc == "RDch" and (time.time()-DchTimer > Tdch or float(voltPSEL)<= Vmin)):
-            #             flag.flagCyc = "RestDch"
-            #             DchTimer = 0
-            #             measuringDevice.configPSEL(0,0)
-            #         #Start resting discharge
-            #         if(flag.flagCyc == "RestDch"):
-            #             measuringDevice.configPSEL(0,0)
-            #             RestDchTimer = time.time()
-            #             flag.flagCyc = "RRestDch" #-->Run RestDch
-            #         if(flag.flagCyc == "RRestDch" and time.time()-RestDchTimer > Trest):
-            #             flag.flagCyc = "Ch"
-            #             RestDchTimer = 0
-            #             Nc += 1
-            #             print(Nc)
-            #     elif(Nc>=2):
-            #         print("Acabou")
-            #         measuringDevice.configPSEL(0,0)
-            #         flag.flagStt = "StopPSEL"
-            #         flag.flagCyc = "Done"
-            #         Nc = 0
-
-            #     # Measures
-            #     measuringDevice.configMeasureWrite("PS")
-            #     measuringDevice.configMeasureWrite("EL")
-
-            #     if(flag.flagCyc == "Dch" or flag.flagCyc == "RDch" or flag.flagCyc == "RestDch"  or flag.flagCyc == "RRestDch"):
-            #         voltPSEL = str(round(float(voltEL),3))
-            #         ampPSEL = str(round(float(ampEL),3))
-            #     elif(flag.flagCyc == "Ch" or flag.flagCyc == "RCh" or flag.flagCyc == "RestCh"  orflag. flagCyc == "RRestCh"):
-            #         voltPSEL = str(round(float(voltPS),3))
-            #         ampPSEL = str(round(-float(ampPS),3))
-
-            #     QcompPSEL = QcompPSEL - float(ampPSEL)/3600
-            #     QcompPSEL = round(float(QcompPSEL),8)
-
-            #     sendMeasPSEL = 'measPSEL;'+str(round(elapsedTimePSEL,1))+';'+voltPSEL.split('\n')[0]+';'+ampPSEL.split('\n')[0]+';'+str(QcompPSEL)+';'+flagCyc+';'+ flagType
-            #     conn.sendall(sendMeasPSEL.encode())
-
-
-
-
 
 
