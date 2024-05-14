@@ -1,6 +1,5 @@
 @echo off
 :start
-
 :: Start the python script
 start /B C:/ProgramData/anaconda3/python.exe LIBS_Back/controller.py
 

@@ -7,6 +7,7 @@ import time
 import random
 import databaseBuild
 
+
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
 ###################################################################
@@ -94,7 +95,7 @@ class MeasuringDevice():
 
     def configELRand(self, RandAmpl):
         self.electLoad.write("SOUR:FUNC CURR")
-        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(RandAmpl))
+        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(RandAmpl*cell.Qn))
         self.electLoad.write("SOUR:CURR:RANG 4")
         self.electLoad.write("SOUR:CURR:SLEW 0.01")
         self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
@@ -103,13 +104,12 @@ class MeasuringDevice():
 
     def configELStep(self):
         self.electLoad.write("SOUR:FUNC CURR")
-        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(hppc.ampl[hppc.step]))
+        self.electLoad.write("SOUR:CURR:LEV:IMM " + str(hppc.increment()*cell.Qn))
         self.electLoad.write("SOUR:CURR:RANG 4")
         self.electLoad.write("SOUR:CURR:SLEW 0.01")
         self.electLoad.write("SOUR:CURR:VON " + str(cell.Vmin))
         self.electLoad.write("SOUR:CURR:VLIM " + str(cell.Vmax))
         self.electLoad.write("SOUR:CURR:ILIM 5")
-        hppc.increment()
 
     def configEL40(self, It, chargeDischarge):
         self.electLoad.write("SOUR:CURR:RANG 40")
@@ -276,7 +276,6 @@ class ChargeDischarge():
             flag.setFlagLoadPulse()
             flag.setFlagDvcEL()
             measuringDevice.configELStart(It)
-            modeElectLoad = measuringDevice.electLoad.query('SOUR:FUNC?')  #for what ? Nothing
 
 
         elif (profile == "Dch" and mode == "Random"):
@@ -318,9 +317,11 @@ class Hppc():
         self.ampl = [0.25, 0.5, 1.0, 1.5]
 
     def increment(self):
+        record = self.ampl[self.step]
         self.step = self.step + 1
         if (self.step == 4):
             self.step = 0
+        return record
 
 ########################################################################
 
@@ -448,7 +449,6 @@ while True:
                     print("time pulsing : " + str(RandTime))
 
                 if (flag.flagLoad == "Step"):
-                    step = 0.1
                     startTimeStepEL = time.time()
                     stateSignal = True
 
@@ -500,6 +500,7 @@ while True:
                     if (pulseWidth >= 300):
                         stateSignal = not stateSignal
                         startTimePulseEL = time.time()
+
                     if (float(voltElectLoad) <= cell.Vmin):
                         measuringDevice.configEL(0)
                         flag.flagStt = "StopEL"
@@ -542,12 +543,12 @@ while True:
                     elif (stateSignal == False):
                         measuringDevice.configEL(0)
                     pulseWidth = time.time() - startTimeStepEL
-                    if (pulseWidth >= 300 and stateSignal == False):
+                    if (pulseWidth >= 10*60 and stateSignal == False):
                         stateSignal = not stateSignal
                         startTimeStepEL = time.time()
                         measuringDevice.configELStep()
 
-                    if(pulseWidth >= 300 and stateSignal == True):
+                    if(pulseWidth >= 55 and stateSignal == True):
                         stateSignal = not stateSignal
                         startTimeStepEL = time.time()
 
