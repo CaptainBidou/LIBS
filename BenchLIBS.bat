@@ -2,7 +2,7 @@
 :start
 
 :: Start the python script
-start /B C:\Users\tjasr\AppData\Local\Programs\Python\Python312\python.exe LIBS_Back/controller.py
+start /B C:/ProgramData/anaconda3/python.exe LIBS_Back/controller.py
 
 :: Start Node-RED
 start /B node-red
