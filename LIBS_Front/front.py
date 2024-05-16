@@ -1,27 +1,58 @@
+###################################################################
+##                   I M P O R T    P A C K A G E                ##
+###################################################################
 import streamlit as st
 import numpy as np
 import pandas as pd
-import os
-import sys
-import matplotlib.pyplot as plt
-sys.path.append("C:/Users/tjasr/Documents/GitHub/LIBS/LIBS_Back")
-import databaseBuild
+import socket
+import json
+
+###################################################################
+##                   G L O B A L   C O N S T A N T               ##
+###################################################################
+HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
+PORT = 5000  # Port to listen on (non-privileged ports are > 1023)
+
+###################################################################
+##                   G L O B A L   V A R I A B L E S             ##
+###################################################################
+
+###################################################################
+##            F U N C T I O N    D E C L A R A T I O N           ##
+###################################################################
+def request(id, data):
+    for res in socket.getaddrinfo(HOST, PORT):
+        with socket.socket(res[0], socket.SOCK_STREAM) as s:
+            s.connect(res[4])
+            s.sendall(json.dumps({"id": id, "data": data}).encode())
+            data = s.recv(1024)
+            s.close()
+    return json.loads(data.decode())
+
+###################################################################
+##            S T R U C T    D E C L A R A T I O N               ##
+###################################################################
+
+
 
 # Sidebar
 cells_expanded = st.sidebar.checkbox("Expand Cells", value=True)
 cells = st.sidebar.expander("Cells", expanded=cells_expanded)
-cellTab = databaseBuild.getCells()
+# send a request to the backend 127.0.0.1:5000
+# the code of the request should be 2
+# the response should be the list of cells
+cellsTab = request(2, "")
+
 with cells:
-    for cell in cellTab:
+    for cell in cellsTab:
         st.write("- "+cell[1])
-
-
 observers_expanded = st.sidebar.checkbox("Expand Observers", value=True)
 observers = st.sidebar.expander("Observers", expanded=observers_expanded)
-obsTab = databaseBuild.getObservers()
-with observers:
-    for observer in obsTab:
-        st.write("- " + observer[1])
+
+# obsTab = databaseBuild.getObservers()
+# with observers:
+#     for observer in obsTab:
+#         st.write("- " + observer[1])
 
 new_observers_expanded = st.sidebar.checkbox("Expand New Observers", value=True)
 new_observers = st.sidebar.expander("New Observers", expanded=new_observers_expanded)
@@ -39,18 +70,18 @@ col1, col2 = st.columns(2)
 with col1:
     new_test_expanded = st.checkbox("Expand New Test", value=True)
     new_test = st.expander("New Test", expanded=new_test_expanded)
-    actionTab = databaseBuild.getActions()
-    actionTabName = []
-    for action in actionTab:
-        actionTabName.append(action[1])
+    # actionTab = databaseBuild.getActions()
+    # actionTabName = []
+    # for action in actionTab:
+    #     actionTabName.append(action[1])
 
-    with new_test:
-        with new_test:
-            action = st.selectbox("Action:", actionTab)
-            comment = st.text_input("Comment:")
-            cell_choose = st.selectbox("Cell:", cellTab)
-            obsTab.append("None")
-            observer_choose = st.selectbox("Observer:", obsTab)
+    # with new_test:
+    #     with new_test:
+    #         action = st.selectbox("Action:", actionTab)
+    #         comment = st.text_input("Comment:")
+    #         cell_choose = st.selectbox("Cell:", cellTab)
+    #         obsTab.append("None")
+    #         observer_choose = st.selectbox("Observer:", obsTab)
 with col2:
     parameters_expanded = st.checkbox("Expand Parameters", value=True)
     parameters = st.expander("Parameters", expanded=parameters_expanded)
@@ -131,4 +162,4 @@ with col3_graph:
 if submit_button:
     st.write("Test started")
     #add the test to the database
-    idTest = databaseBuild.createTest(action[0], comment, [cell_choose[0]])
+    # idTest = databaseBuild.createTest(action[0], comment, [cell_choose[0]])

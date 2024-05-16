@@ -138,6 +138,13 @@ def getTests():
     mycursor.execute("SELECT * FROM tests")
     tests = mycursor.fetchall()
     return tests
+def getMeasures(id_test, id_last_measure):
+    if(id_last_measure == None):
+        mycursor.execute("SELECT * FROM measures WHERE id_test = %s", (id_test,))
+    else:
+        mycursor.execute("SELECT * FROM measures WHERE id_test = %s AND id > %s", (id_test, id_last_measure))
+    measures = mycursor.fetchall()
+    return measures
 
 
 def drawGraph():
@@ -190,5 +197,10 @@ def addDataset():
     for i in range(len(data.values)):
         createMeasure(id_test,data.values[i][0], data.values[i][2], data.values[i][1], 0, 0)
     return
-
+def createObserver(name):
+    sql = "INSERT INTO observers (name) VALUES (%s)"
+    val = (name,)
+    mycursor.execute(sql, val)
+    mydb.commit()
+    return mycursor.lastrowid
 
