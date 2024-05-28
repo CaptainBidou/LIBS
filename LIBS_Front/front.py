@@ -124,7 +124,7 @@ voltage = np.sin(time)
 current = np.cos(time)
 capacity = np.tan(time)
 
-with open("C:/Users/tjasr/Documents/GitHub/LIBS/LIBS_Back/datasets/BID002_CycRand_08052024.csv", 'r') as file:
+with open("/LIBS_Back/datasets/BID002.txt", 'r') as file:
     data = pd.read_csv(file, delimiter=';')
 timeTab = []
 voltageTab = []

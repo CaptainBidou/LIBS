@@ -275,6 +275,18 @@ def startTestDischarge(profile,idTest):
 
 
 
+def startTestCharge(idTest):
+    #profile is always CC-CV
+    #we start the time
+    startTime = time.time()
+    while (True):
+        startProfilePS(1,devices.pwrSupply)
+        timePulsing = cccvProfile.getTimePulsing()
+        startMeasure(idTest,devices.pwrSupply)
+        output(1,devices.pwrSupply,"PS")
+
+
+
 
 
 

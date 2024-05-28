@@ -148,11 +148,11 @@ def getMeasures(id_test, id_last_measure):
 
 
 def drawGraph():
-    #datasets/BID002_CycRand_08052024.csv
+    #datasets/BID002.txt
     #csv file :
         #time;voltage;current;idk;idk
     fig, ax = plt.subplots()
-    with open('LIBS_Back/datasets/BID002_CycRand_08052024.csv', 'r') as file:
+    with open('C:/Users/tjasr/Documents/GitHub/LIBS/LIBS_Back/datasetsBID002_CycRand_08052024.csv', 'r') as file:
         data = pd.read_csv(file, delimiter=';')
     timeTab = []
     voltageTab = []
@@ -172,9 +172,9 @@ def drawGraph():
 
 
 def addDataset():
-    #datasets/BID002_CycRand_08052024.csv
+    #datasets/BID002.txt
     #0: time, 1: voltage, 2: current
-    with open('LIBS_Back/datasets/BID002_CycRand_08052024.csv', 'r') as file:
+    with open('LIBS_Back/datasets/BID002.txt', 'r') as file:
         data = pd.read_csv(file, delimiter=';')
     #choose the action
     actions = getActions()
@@ -204,3 +204,4 @@ def createObserver(name):
     mydb.commit()
     return mycursor.lastrowid
 
+drawGraph()
