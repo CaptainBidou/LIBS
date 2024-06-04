@@ -74,7 +74,14 @@ class observer:
         return np.dot(self.A,self.xhat) + self.B*u+self.L * (z-self.yhat)
     def h(self,x):
         return (x ** 6) * -22.215 + (x ** 5) * 70.560 + (x ** 4) * -89.148 + (x ** 3) * 57.312 + (x ** 2) * -19.563 + x * 3.994 + 3.142
+    def runOneStepOnline(self, z, u):
+        val = self.nextStep(z, u)
+        print(val)
+        return val
 
+
+
+###################################################################
 def test(nom):
     o = observer(nom)
     saveVoltage = [0]

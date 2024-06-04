@@ -5,6 +5,8 @@ import time
 import databaseBuild
 import pyvisa as visa
 import random
+import threading
+
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -138,6 +140,28 @@ class ChargeDischarge():
 
 
 ########################################################################
+
+class Counter():
+    def __init__(self, increment, idTest, device):
+        self.next_t = time.time()
+        self.i = 0
+        self.done = False
+        self.increment = increment
+        self.device = device
+        self.idTest = idTest
+        self._run()
+
+    def _run(self):
+        startMeasure(self.idTest, self.device)
+        self.next_t += self.increment
+        self.i += 1
+        if not self.done:
+            threading.Timer(self.next_t - time.time(), self._run).start()
+
+    def stop(self):
+        self.done = True
+
+########################################################################
 class HppcProfile():
     def __init__(self):
         self.step = 0
@@ -236,42 +260,40 @@ def startTestDischarge(profile,idTest):
 
     #we start the time
     startTime = time.time()
+    interrupt = Counter(1,idTest,devices.electLoad)
     while (True):
 
         startProfileEL(profile.getAmpl()*cell.Qn, 5, devices.electLoad)
         configELWrite(devices.electLoad)
         configELModeQuery(devices.electLoad)
         timePulsing = profile.getTimePulsing()
-        lastTime = time.time()
+
+        # config the ouput
+        output(1, devices.electLoad, "EL")
         while (time.time() - startTime < timePulsing):
             print("timePulsing")
-            #config the ouput
-            output(1,devices.electLoad,"EL")
-
-            #We start the measure
-            startMeasure(idTest,devices.electLoad)
-
             #we wait the time
             voltage = configMeasureQuery(devices.electLoad, "VOLT")
             voltage = str(round(float(voltage), 3))
+
             if(voltage <= cell.Vmin):
                 print("Voltage is too low")
+                interrupt.stop()
                 exit()
-            time.sleep(lastTime - time.time() + SAMPLING_RATE)
-
+            time.sleep(SAMPLING_RATE)
 
         timeResting = profile.getTimeResting()
-        lastTime = time.time()
+
+        # config the ouput
+        output(0, devices.electLoad, "EL")
         while (time.time() - startTime < timeResting):
             print("timeResting")
-            #config the ouput
-            output(0,devices.electLoad,"EL")
+
             #We start the measure
             startMeasure(idTest,devices.electLoad)
 
             #we wait the time
             time.sleep(SAMPLING_RATE)
-            time.sleep(lastTime - time.time() + SAMPLING_RATE)
 
 
 
