@@ -203,5 +203,3 @@ def createObserver(name):
     mycursor.execute(sql, val)
     mydb.commit()
     return mycursor.lastrowid
-
-drawGraph()
