@@ -260,7 +260,7 @@ def startTestDischarge(profile,idTest):
 
     #we start the time
     startTime = time.time()
-    interrupt = Counter(1,idTest,devices.electLoad)
+    interrupt = Counter(SAMPLING_RATE,idTest,devices.electLoad)
     while (True):
 
         startProfileEL(profile.getAmpl()*cell.Qn, 5, devices.electLoad)

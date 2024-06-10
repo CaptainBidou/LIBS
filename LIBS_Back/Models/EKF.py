@@ -3,7 +3,7 @@
 ###################################################################
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import graph
 
 
 ###################################################################
@@ -32,12 +32,12 @@ Qn = 3.08
 
 class EKF:
     def __init__(self,fileToOpen,mode):
-
+        self.fileToOpen = fileToOpen
         self.x = np.array([[0],[0],[0.8]]) # state vector
         if mode == 1:
-            self.P = np.diag([0.1, 0.1, 10 ** 7])  # covariance matrix
+            self.P = np.diag([0.1, 0.1, 10 ** 3])  # covariance matrix
             self.Q = 10 ** -6 * np.eye(3)  # process noise
-            self.R = 2500  # measurement noise
+            self.R = 2500 # measurement noise
         elif mode == 2:
             self.P = np.diag([1*10**-3, 1*10**-3, 10])
             self.Q = np.diag([1 * 10 ** -5, 1 * 10 ** -5, 1 * 10 ** -9])  # process noise
@@ -112,7 +112,7 @@ class EKF:
         self.z = self.data.values[self.step][1]
         self.u = self.data.values[self.step][2]
         self.step += 1
-        print(self.step)
+        # print(self.step)
 
 
     def runOffline(self):
@@ -156,22 +156,24 @@ class EKF:
             gTab.append(self.g(self.safeX[i][0],self.safeX[i][1],self.safeX[i][2],self.data.values[i][2]))
             socEstimator.append(self.safeX[i][2])
 
-        fig2, ax2 = plt.subplots()
-        ax2.plot(timeTab, socTab, label='soc')
-        ax2.plot(timeTab, socEstimator, label='socEstimator')
-        plt.xlabel('time')
-        plt.ylabel('soc')
-        ax2.legend()
-        plt.show()
 
-        fig, ax = plt.subplots()
-        ax.plot(timeTab, voltageTab, label='voltage')
-        ax.plot(timeTab, currentTab, label='current')
-        ax.plot(timeTab, gTab, label='g')
-        plt.xlabel('time')
-        plt.ylabel('voltage/current')
-        ax.legend()
-        plt.show()
+        graph.Graph(timeTab, socTab, socEstimator, voltageTab, currentTab, gTab,self.fileToOpen)
+        # fig2, ax2 = plt.subplots()
+        # ax2.plot(timeTab, socTab, label='soc')
+        # ax2.plot(timeTab, socEstimator, label='socEstimator')
+        # plt.xlabel('time')
+        # plt.ylabel('soc')
+        # ax2.legend()
+        # plt.show()
+        #
+        # fig, ax = plt.subplots()
+        # ax.plot(timeTab, voltageTab, label='voltage')
+        # ax.plot(timeTab, currentTab, label='current')
+        # ax.plot(timeTab, gTab, label='g')
+        # plt.xlabel('time')
+        # plt.ylabel('voltage/current')
+        # ax.legend()
+        # plt.show()
         return
 
 
@@ -217,3 +219,11 @@ class EKF:
 # ekf.runOffline()
 # ekf = EKF("HPPC.txt",4)
 # ekf.runOffline()
+
+
+import os
+for root, dirs, files in os.walk("C:/Users/tjasr/Documents/GitHub/LIBS/LIBS_Back/datasets/TestDchC/"):
+    for file in files:
+        if file.endswith(".txt"):
+            ekf = EKF("TestDchC/"+file, 1)
+            ekf.runOffline()
