@@ -6,6 +6,7 @@ import databaseBuild
 import pyvisa as visa
 import random
 import threading
+import atexit
 
 
 ###################################################################
@@ -27,6 +28,7 @@ pulseProfile = None
 constantProfile = None
 cccvProfile = None
 startTime = 0
+killThread = False
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
 ###################################################################
@@ -47,8 +49,8 @@ def initDevice(device):
     device.pwrSupply_info = device.pwrSupply.query('*IDN?')
     device.electLoad_info = device.electLoad.query('*IDN?')
 
-def startMeasure(idTest,device):
-    if(device != "PS" and device != "EL"):
+def startMeasure(idTest,device,mode):
+    if(mode != "PS" and mode != "EL"):
         return
     #wait 1s
     time.sleep(SAMPLING_RATE)
@@ -68,11 +70,11 @@ def startProfilePS(value,device):
 def startProfileEL(It,Imax,device):
     device.write("SOUR:FUNC CURR")
     device.write("SOUR:CURR:LEV:IMM " + str(It))
-    device.write("SOUR:CURR:RANG 4")
-    device.write("SOUR:CURR:SLEW 0.01")
+    device.write("SOUR:CURR:RANG 40")
+    device.write("SOUR:CURR:SLEW 0.001")
     device.write("SOUR:CURR:VON " + str(cell.Vmin))
     device.write("SOUR:CURR:VLIM " + str(cell.Vmax))
-    device.write("SOUR:CURR:ILIM " + str(Imax))
+    device.write("SOUR:CURR:ILIM 5")
 
 def configMeasureQuery(device, measure):
         if (measure == "VOLT"):
@@ -96,6 +98,11 @@ def configELModeQuery(device):
 
 def configELWrite(device):
     device.write('STAT:QUES:ENAB 32271')
+
+def exitProg():
+    output(0, devices.electLoad, "EL")
+    output(0, devices.pwrSupply, "PS")
+    
 
 ###################################################################
 ##            S T R U C T    D E C L A R A T I O N               ##
@@ -142,17 +149,19 @@ class ChargeDischarge():
 ########################################################################
 
 class Counter():
-    def __init__(self, increment, idTest, device):
+    def __init__(self, increment, idTest, device,mode):
         self.next_t = time.time()
         self.i = 0
         self.done = False
         self.increment = increment
         self.device = device
+        self.mode = mode
         self.idTest = idTest
         self._run()
 
     def _run(self):
-        startMeasure(self.idTest, self.device)
+        print("interrupt")
+        startMeasure(self.idTest, self.device,self.mode)
         self.next_t += self.increment
         self.i += 1
         if not self.done:
@@ -192,6 +201,7 @@ class RandomProfile():
         return self.ampl
     def getTimeResting(self):
         self.timeResting = random.uniform(5*60, 10*60)
+        # self.timeResting = random.uniform(30, 60)
         return self.timeResting
     def getTimePulsing(self):
         self.timePulsing = random.uniform(30, 120)
@@ -248,26 +258,35 @@ class CCCVProfile():
 
 cell = Cell()
 devices = MeasuringDevice(POWER_SUPPLY, ELECTRONIC_LOAD)
+initDevice(devices)
 param = ChargeDischarge()
 randomProfile = RandomProfile()
 hppcProfile = HppcProfile()
 pulseProfile = PulseProfile()
 constantProfile = ConstantProfile()
 cccvProfile = CCCVProfile()
+interrupt = None
+atexit.register(exitProg)
+
+
+
+#TODO send the message
+
 
 
 def startTestDischarge(profile,idTest):
 
-    #we start the time
-    startTime = time.time()
-    interrupt = Counter(SAMPLING_RATE,idTest,devices.electLoad)
+    #we start the measure sequencer
+    interrupt = Counter(SAMPLING_RATE,idTest,devices.electLoad,"EL")
+    output(1, devices.electLoad, "EL")
+    
     while (True):
-
+        startTime = time.time()
         startProfileEL(profile.getAmpl()*cell.Qn, 5, devices.electLoad)
         configELWrite(devices.electLoad)
         configELModeQuery(devices.electLoad)
         timePulsing = profile.getTimePulsing()
-
+        print(timePulsing)
         # config the ouput
         output(1, devices.electLoad, "EL")
         while (time.time() - startTime < timePulsing):
@@ -276,22 +295,25 @@ def startTestDischarge(profile,idTest):
             voltage = configMeasureQuery(devices.electLoad, "VOLT")
             voltage = str(round(float(voltage), 3))
 
-            if(voltage <= cell.Vmin):
+            if(float(voltage) <= cell.Vmin or killThread):
                 print("Voltage is too low")
+                output(0, devices.electLoad, "EL")
+                output(0, devices.pwrSupply, "PS")
                 interrupt.stop()
+                print("We turn off everything before leaving")
                 exit()
             time.sleep(SAMPLING_RATE)
 
         timeResting = profile.getTimeResting()
-
+        print(timeResting)
         # config the ouput
+        startTime = time.time()
         output(0, devices.electLoad, "EL")
         while (time.time() - startTime < timeResting):
             print("timeResting")
-
-            #We start the measure
-            startMeasure(idTest,devices.electLoad)
-
+            if(killThread):
+                interrupt.stop()
+                exit()
             #we wait the time
             time.sleep(SAMPLING_RATE)
 
@@ -308,15 +330,23 @@ def startTestCharge(idTest):
         output(1,devices.pwrSupply,"PS")
 
 
+def setTest(idTest):
+    result=databaseBuild.getTestsId(idTest)
+    print("result : " + str(result))
 
-
-
-
-
-
-
-
-
+    if result[0][2]==1:
+        startTestCharge(idTest)
+    elif result[0][2]==2:
+        pass
+    elif result[0][2]==3:
+        profile = RandomProfile()
+        startTestDischarge(profile,idTest)
+    elif result[0][2]==4:
+        profile = PulseProfile()
+        startTestDischarge(profile,idTest)
+    elif result[0][2]==5:
+        profile = HppcProfile()
+        startTestDischarge(profile,idTest)
 
 
 

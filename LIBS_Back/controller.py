@@ -6,6 +6,8 @@ import databaseBuild
 import sampler
 import json
 from threading import Thread
+import os
+import signal
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -18,6 +20,7 @@ PORT = 5000  # Port to listen on (non-privileged ports are > 1023)
 ###################################################################
 response = "Hello World"
 thread = None
+SonPID = None
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
 ###################################################################
@@ -40,17 +43,16 @@ while True:
             msg = data.decode("utf-8")  #Decode binary to string
 
             #msg is a json { "id": 1, "data": { ... } }
-
             msg = json.loads(msg)
             #AttributeError: 'dict' object has no attribute 'id'
             msg = type('obj', (object,), msg)()
 
-
-
-            print(msg)
             id = msg.id
 
-            data = msg.data
+            # data = msg.data.decode("utf-8")
+            data = json.loads(str(msg.data))
+            data = type('obj', (object,), data)()
+            print(data)
 
 
             response = None
@@ -78,21 +80,22 @@ while True:
                 # Get the Measures from the database / we can put null for the id_last_measure and we will have all the measures
                 # data = {‘id_test’:,'id_last_measure':}
                 # dataRepsonse = [{‘Time’,’Current’,’Voltage’}]
-                response  = databaseBuild.getMeasures(data['id_test'], data['id_last_measure'])
+                response  = databaseBuild.getMeasures(data.id_test, data.id_last_measure)
 
                 pass
             elif id == 5:
                 # Create an observer
                 # data = {‘Name’:,’Comment’:}
                 # dataRepsonse = [{‘id’:,’Name’:}]
-                response = databaseBuild.createObserver(data['Name'], data['Comment'])
+                response = databaseBuild.createObserver(data.name, data.comment)
                 response = databaseBuild.getObservers()
                 pass
             elif id == 10:
                 # Create a test
                 # data = {'id_action':,'comment':,cells:[]}
                 # dataRepsonse = {‘id’:}
-                response = databaseBuild.createTest(data['id_action'], data['comment'], data['cells'])
+                print(data.id_action)
+                response = databaseBuild.createTest(data.id_action, data.comment, data.cells)
                 pass
 
             elif id == 11:
@@ -101,7 +104,9 @@ while True:
                 # call the sampler
                 # dataRepsonse = boolean
                 # create a thread for the test
-                thread = Thread(target=sampler.startTest, args=(sampler.RandomProfile, data['id_test']))
+                sampler.killThread = False
+                thread = Thread(target=sampler.setTest, args=(data.id_test,))
+                thread.start()
                 response = True
                 pass
 
@@ -110,7 +115,11 @@ while True:
                 # data = {'id_test':}
                 # stop the sampler
                 # dataRepsonse = boolean
-                thread.join()
+                #sampler.interrupt.stop()
+                sampler.killThread = True
+                thread2 = Thread(target=sampler.exitProg)
+                thread2.start()
+                thread2.join()
                 response = True
                 pass
             else:
