@@ -6,8 +6,6 @@ import databaseBuild
 import sampler
 import json
 from threading import Thread
-import os
-import signal
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -41,7 +39,7 @@ while True:
             data = conn.recv(1024)  #Read data sent by client
 
             msg = data.decode("utf-8")  #Decode binary to string
-
+            print("msg :"+msg)
             #msg is a json { "id": 1, "data": { ... } }
             msg = json.loads(msg)
             #AttributeError: 'dict' object has no attribute 'id'
