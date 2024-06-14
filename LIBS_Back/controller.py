@@ -2,6 +2,7 @@
 ##                   I M P O R T    P A C K A G E                ##
 ###################################################################
 import socket
+import http.server
 import databaseBuild
 import sampler
 import json
@@ -27,103 +28,208 @@ SonPID = None
 ##            S T R U C T    D E C L A R A T I O N               ##
 ###################################################################
 
+#http server
+class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(response.encode())
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        post_data = post_data.decode("utf-8")
+        print(post_data)
+        #msg is a json { "id": 1, "data": { ... } }
+        msg = json.loads(post_data)
+        #AttributeError: 'dict' object has no attribute 'id'
+        msg = type('obj', (object,), msg)()
+        id = msg.id
+        # data = msg.data.decode("utf-8")
+        data = json.loads(str(msg.data))
+        data = type('obj', (object,), data)()
+        print(data)
+        response = None
+        if id == 1:
+            # Get the actions from the database
+            # data = {}
+            # dataRepsonse = [{‘id’:,’Name’:}]
+            response = databaseBuild.getActions()
+            pass
+        elif id == 2:
+            # Get the cells from the database
+            # data = {}
+            # dataRepsonse = [{‘id’:,’Name’:}]
+            response = databaseBuild.getCells()
+            pass
+        elif id == 3:
+            # Get the observers from the database
+            # data = {}
+            # dataRepsonse = [{‘id’:,’Name’:}]
+            response = databaseBuild.getObservers()
+            pass
+        elif id == 4:
+            # Get the Measures from the database / we can put null for the id_last_measure and we will have all the measures
+            # data = {‘id_test’:,'id_last_measure':}
+            # dataRepsonse = [{‘Time’,’Current’,’Voltage’}]
+            response = databaseBuild.getMeasures(data.id_test, data.id_last_measure)
+            pass
+        elif id == 5:
+            # Create an observer
+            # data = {‘Name’:,’Comment’:}
+            # dataRepsonse = [{‘id’:,’Name’:}]
+            response = databaseBuild.createObserver(data.name, data.comment)
+            response = databaseBuild.getObservers()
+            pass
+        elif id == 10:
+            # Create a test
+            # data = {'id_action':,'comment':,cells:[]}
+            # dataRepsonse = {‘id’:}
+            print(data.id_action)
+            response = databaseBuild.createTest(data.id_action, data.comment, data.cells)
+            pass
+        elif id == 11:
+            # Start a test
+            # data = {'id_test':,observer:[]}
+            # call the sampler
+            # dataRepsonse = boolean
+            # create a thread for the test
+            sampler.killThread = False
+            thread = Thread(target=sampler.setTest, args=(data.id_test,))
+            thread.start()
+            response = True
+            pass
+        elif id == 12:
+            # Stop a test
+            # data = {'id_test':}
+            # stop the sampler
+            # dataRepsonse = boolean
+            #sampler.interrupt.stop()
+            sampler.killThread = True
+            thread2 = Thread(target=sampler.exitProg)
+            thread2.start()
+            thread2.join()
+            response = True
+            pass
+        else:
+            exit()
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode())
+
+###################################################################
+
+
+# Create an object of the above class
+handler_object = MyHttpRequestHandler
+
+my_server = http.server.HTTPServer((HOST, PORT), handler_object)
+print("Server started http://%s:%s" % (HOST, PORT))
 while True:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        # can access by http://127.0.0.1:5000
-        s.bind((HOST, PORT))  #Start TCP communication
-        s.listen()  # Waiting some query of the client
-        conn, addr = s.accept()  #Accept query of the  client
-        print("Waiting for a connection")
-        with conn:
-
-            data = conn.recv(1024)  #Read data sent by client
-
-            msg = data.decode("utf-8")  #Decode binary to string
-            print("msg :"+msg)
-            #msg is a json { "id": 1, "data": { ... } }
-            msg = json.loads(msg)
-            #AttributeError: 'dict' object has no attribute 'id'
-            msg = type('obj', (object,), msg)()
-
-            id = msg.id
-
-            # data = msg.data.decode("utf-8")
-            data = json.loads(str(msg.data))
-            data = type('obj', (object,), data)()
-            print(data)
+    my_server.handle_request()
+    # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    #     # can access by http://localhost:5000?name=world
 
 
-            response = None
-
-            if id == 1:
-                # Get the actions from the database
-                # data = {}
-                # dataRepsonse = [{‘id’:,’Name’:}]
-                response = databaseBuild.getActions()
-                pass
-
-            elif id == 2:
-                # Get the cells from the database
-                # data = {}
-                # dataRepsonse = [{‘id’:,’Name’:}]
-                response = databaseBuild.getCells()
-                pass
-            elif id == 3:
-                # Get the observers from the database
-                # data = {}
-                # dataRepsonse = [{‘id’:,’Name’:}]
-                response = databaseBuild.getObservers()
-                pass
-            elif id == 4:
-                # Get the Measures from the database / we can put null for the id_last_measure and we will have all the measures
-                # data = {‘id_test’:,'id_last_measure':}
-                # dataRepsonse = [{‘Time’,’Current’,’Voltage’}]
-                response  = databaseBuild.getMeasures(data.id_test, data.id_last_measure)
-
-                pass
-            elif id == 5:
-                # Create an observer
-                # data = {‘Name’:,’Comment’:}
-                # dataRepsonse = [{‘id’:,’Name’:}]
-                response = databaseBuild.createObserver(data.name, data.comment)
-                response = databaseBuild.getObservers()
-                pass
-            elif id == 10:
-                # Create a test
-                # data = {'id_action':,'comment':,cells:[]}
-                # dataRepsonse = {‘id’:}
-                print(data.id_action)
-                response = databaseBuild.createTest(data.id_action, data.comment, data.cells)
-                pass
-
-            elif id == 11:
-                # Start a test
-                # data = {'id_test':,observer:[]}
-                # call the sampler
-                # dataRepsonse = boolean
-                # create a thread for the test
-                sampler.killThread = False
-                thread = Thread(target=sampler.setTest, args=(data.id_test,))
-                thread.start()
-                response = True
-                pass
-
-            elif id == 12:
-                # Stop a test
-                # data = {'id_test':}
-                # stop the sampler
-                # dataRepsonse = boolean
-                #sampler.interrupt.stop()
-                sampler.killThread = True
-                thread2 = Thread(target=sampler.exitProg)
-                thread2.start()
-                thread2.join()
-                response = True
-                pass
-            else:
-                break
-
-            conn.sendall(json.dumps(response).encode())
+# while True:
+#     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#         # can access by http://127.0.0.1:5000
+#         s.bind((HOST, PORT))  #Start TCP communication
+#         s.listen()  # Waiting some query of the client
+#         conn, addr = s.accept()  #Accept query of the  client
+#         print("Waiting for a connection")
+#         with conn:
+#
+#             data = conn.recv(1024)  #Read data sent by client
+#
+#             msg = data.decode("utf-8")  #Decode binary to string
+#             print("msg :"+msg)
+#             #msg is a json { "id": 1, "data": { ... } }
+#             msg = json.loads(msg)
+#             #AttributeError: 'dict' object has no attribute 'id'
+#             msg = type('obj', (object,), msg)()
+#
+#             id = msg.id
+#
+#             # data = msg.data.decode("utf-8")
+#             data = json.loads(str(msg.data))
+#             data = type('obj', (object,), data)()
+#             print(data)
+#
+#
+#             response = None
+#
+#             if id == 1:
+#                 # Get the actions from the database
+#                 # data = {}
+#                 # dataRepsonse = [{‘id’:,’Name’:}]
+#                 response = databaseBuild.getActions()
+#                 pass
+#
+#             elif id == 2:
+#                 # Get the cells from the database
+#                 # data = {}
+#                 # dataRepsonse = [{‘id’:,’Name’:}]
+#                 response = databaseBuild.getCells()
+#                 pass
+#             elif id == 3:
+#                 # Get the observers from the database
+#                 # data = {}
+#                 # dataRepsonse = [{‘id’:,’Name’:}]
+#                 response = databaseBuild.getObservers()
+#                 pass
+#             elif id == 4:
+#                 # Get the Measures from the database / we can put null for the id_last_measure and we will have all the measures
+#                 # data = {‘id_test’:,'id_last_measure':}
+#                 # dataRepsonse = [{‘Time’,’Current’,’Voltage’}]
+#                 response  = databaseBuild.getMeasures(data.id_test, data.id_last_measure)
+#
+#                 pass
+#             elif id == 5:
+#                 # Create an observer
+#                 # data = {‘Name’:,’Comment’:}
+#                 # dataRepsonse = [{‘id’:,’Name’:}]
+#                 response = databaseBuild.createObserver(data.name, data.comment)
+#                 response = databaseBuild.getObservers()
+#                 pass
+#             elif id == 10:
+#                 # Create a test
+#                 # data = {'id_action':,'comment':,cells:[]}
+#                 # dataRepsonse = {‘id’:}
+#                 print(data.id_action)
+#                 response = databaseBuild.createTest(data.id_action, data.comment, data.cells)
+#                 pass
+#
+#             elif id == 11:
+#                 # Start a test
+#                 # data = {'id_test':,observer:[]}
+#                 # call the sampler
+#                 # dataRepsonse = boolean
+#                 # create a thread for the test
+#                 sampler.killThread = False
+#                 thread = Thread(target=sampler.setTest, args=(data.id_test,))
+#                 thread.start()
+#                 response = True
+#                 pass
+#
+#             elif id == 12:
+#                 # Stop a test
+#                 # data = {'id_test':}
+#                 # stop the sampler
+#                 # dataRepsonse = boolean
+#                 #sampler.interrupt.stop()
+#                 sampler.killThread = True
+#                 thread2 = Thread(target=sampler.exitProg)
+#                 thread2.start()
+#                 thread2.join()
+#                 response = True
+#                 pass
+#             else:
+#                 break
+#
+#             conn.sendall(json.dumps(response).encode())
 
 
 
