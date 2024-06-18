@@ -203,3 +203,21 @@ def createObserver(name):
     mycursor.execute(sql, val)
     mydb.commit()
     return mycursor.lastrowid
+
+def getTest(id_test):
+    #get the test the action with the name the cell with the name the observers with the name
+    # test = {"id":id_test, "time":time, "action":action, "comment":comment, "cells":[cell,cell,...]}
+    mycursor.execute("SELECT * FROM tests WHERE id = %s", (id_test,))
+    test = mycursor.fetchall()
+    test = test[0]
+    mycursor.execute("SELECT * FROM actions WHERE id = %s", (test[2],))
+    action = mycursor.fetchall()
+    action = action[0]
+    mycursor.execute("SELECT * FROM cells_relations WHERE id_test = %s", (id_test,))
+    cells = mycursor.fetchall()
+    cellsTab = []
+    for cell in cells:
+        mycursor.execute("SELECT * FROM cells WHERE id = %s", (cell[1],))
+        cellsTab.append(mycursor.fetchall()[0])
+    test = {"id":test[0], "time":str(test[1]), "action":{"id_action":action[0],"name":action[1]}, "comment":test[3], "cells":cellsTab}
+    return test
