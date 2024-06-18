@@ -4,7 +4,7 @@
 import socket
 import http.server
 import databaseBuild
-import sampler
+#import sampler
 import json
 from threading import Thread
 
@@ -17,7 +17,7 @@ PORT = 5000  # Port to listen on (non-privileged ports are > 1023)
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
-response = "Hello World"
+response = {"Hello":"World"}
 thread = None
 SonPID = None
 ###################################################################
@@ -31,26 +31,53 @@ SonPID = None
 #http server
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
+        #CORS policy
         self.send_response(200)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST")
+        self.send_header("Access-Control-Allow-Headers", "X-Requested-With")
         self.end_headers()
-        self.wfile.write(response.encode())
+
+        # self.wfile.write(response.encode())#dict has not attribute encode
+        self.wfile.write(json.dumps(response).encode())
+
+
+    def do_OPTIONS(self):
+        # pre - flight request's response HTTP status code is 200 OK
+        self.send_response(200)
+        # self.send_header("Content-type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Credentials", "true")
+        self.send_header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT")
+        self.send_header("Access-Control-Allow-Headers",
+                         "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers")
+        self.end_headers()
+
 
     def do_POST(self):
+        #CORS policy
+        self.send_response(200)
+        # self.send_header("Content-type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Credentials", "true")
+        self.send_header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT")
+        self.send_header("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers")
+        self.end_headers()
+        #print the data sent by the client
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
-        post_data = post_data.decode("utf-8")
         print(post_data)
-        #msg is a json { "id": 1, "data": { ... } }
-        msg = json.loads(post_data)
-        #AttributeError: 'dict' object has no attribute 'id'
-        msg = type('obj', (object,), msg)()
-        id = msg.id
-        # data = msg.data.decode("utf-8")
-        data = json.loads(str(msg.data))
-        data = type('obj', (object,), data)()
-        print(data)
+        #post_data is a binary data b'{"id":1,"data":{"nothing":"nothing"}}'
+
+        post_data = json.loads(post_data)
+        id = post_data["id"]
+        print(id)
+        data= post_data["data"]
+        print(post_data["data"])
+
         response = None
+
         if id == 1:
             # Get the actions from the database
             # data = {}
@@ -73,21 +100,29 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # Get the Measures from the database / we can put null for the id_last_measure and we will have all the measures
             # data = {‘id_test’:,'id_last_measure':}
             # dataRepsonse = [{‘Time’,’Current’,’Voltage’}]
-            response = databaseBuild.getMeasures(data.id_test, data.id_last_measure)
+            response = databaseBuild.getMeasures(data["id_test"], data["id_last_measure"])
             pass
         elif id == 5:
             # Create an observer
             # data = {‘Name’:,’Comment’:}
             # dataRepsonse = [{‘id’:,’Name’:}]
-            response = databaseBuild.createObserver(data.name, data.comment)
+            response = databaseBuild.createObserver(data["name"], data["comment"])
             response = databaseBuild.getObservers()
             pass
+        elif id == 6:
+            # get the test
+            # data = {‘id_test’:}
+            # dataRepsonse = [{‘id’:,’id_action’:,’comment’:,’cells’:[]}]
+            response = databaseBuild.getTest(data["id_test"])
+            pass
+
         elif id == 10:
             # Create a test
             # data = {'id_action':,'comment':,cells:[]}
             # dataRepsonse = {‘id’:}
-            print(data.id_action)
-            response = databaseBuild.createTest(data.id_action, data.comment, data.cells)
+
+            response = databaseBuild.createTest(data["id_action"], data["comment"], data["cells"])
+            print(response)
             pass
         elif id == 11:
             # Start a test
@@ -96,7 +131,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # dataRepsonse = boolean
             # create a thread for the test
             sampler.killThread = False
-            thread = Thread(target=sampler.setTest, args=(data.id_test,))
+            thread = Thread(target=sampler.setTest, args=(data["id_test"],))
             thread.start()
             response = True
             pass
@@ -105,7 +140,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # data = {'id_test':}
             # stop the sampler
             # dataRepsonse = boolean
-            #sampler.interrupt.stop()
+            # sampler.interrupt.stop()
             sampler.killThread = True
             thread2 = Thread(target=sampler.exitProg)
             thread2.start()
@@ -114,10 +149,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             pass
         else:
             exit()
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
+
         self.wfile.write(json.dumps(response).encode())
+
+
 
 ###################################################################
 
@@ -129,6 +164,29 @@ my_server = http.server.HTTPServer((HOST, PORT), handler_object)
 print("Server started http://%s:%s" % (HOST, PORT))
 while True:
     my_server.handle_request()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     #     # can access by http://localhost:5000?name=world
 
