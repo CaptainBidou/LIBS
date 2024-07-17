@@ -15,11 +15,10 @@ import graph
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
 SAMPLING_RATE = 1  # seconds
-R0 = 123.445 *10**-3
-R1 = 16.533*10**-3
-C1 = 4.378*10**3
-R2 = 2.069*10**-3
-C2 = 35.756*10**3
+R1 = 9.818*10**-3
+C1 = 15.639*10**3
+R2 = 31.463*10**-3
+C2 = 39.332*10**3
 Qn = 3.08
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
@@ -33,26 +32,26 @@ Qn = 3.08
 class EKF:
     def __init__(self,fileToOpen,mode):
         self.fileToOpen = fileToOpen
-        self.x = np.array([[0],[0],[0.8]]) # state vector
+        self.x = np.array([[0],[0],[1]]) # state vector
         if mode == 1:
-            self.P = np.diag([0.1, 0.1, 10 ** 3])  # covariance matrix
+            self.P = np.diag([10**-3, 10**-3, 10 ** -1])  # covariance matrix
             self.Q = 10 ** -6 * np.eye(3)  # process noise
-            self.R = 2500 # measurement noise
-        elif mode == 2:
-            self.P = np.diag([1*10**-3, 1*10**-3, 10])
-            self.Q = np.diag([1 * 10 ** -5, 1 * 10 ** -5, 1 * 10 ** -9])  # process noise
-            self.R = 1 * 10 ** -5
-        elif mode == 3:
-            self.P = np.diag([0.01, 0.01, 100])
-            self.Q = 0.01 * np.eye(3)
-            self.R = 10
-        elif mode == 4:
-            self.P = np.diag([0.001, 0.001, 100])  # covariance matrix
-            self.Q = np.diag([10**-5, 10**-5, 10**-9])  # process noise
-            self.R = 10**-5  # measurement noise
+            self.R = 0.2 # measurement noise
+        # elif mode == 2:
+        #     self.P = np.diag([1*10**-3, 1*10**-3, 10])
+        #     self.Q = np.diag([1 * 10 ** -5, 1 * 10 ** -5, 1 * 10 ** -9])  # process noise
+        #     self.R = 1 * 10 ** -5
+        # elif mode == 3:
+        #     self.P = np.diag([0.01, 0.01, 100])
+        #     self.Q = 0.01 * np.eye(3)
+        #     self.R = 10
+        # elif mode == 4:
+        #     self.P = np.diag([0.001, 0.001, 100])  # covariance matrix
+        #     self.Q = np.diag([10**-5, 10**-5, 10**-9])  # process noise
+        #     self.R = 10**-5  # measurement noise
 
-        self.A = np.array([[1-(SAMPLING_RATE/(R1*C1)), 0, 0], [0, 1-(SAMPLING_RATE/(R2*C2)), 0], [0, 0, 1]])# non linear function based on the chosen model see the paper p2
-        self.B = np.array([[SAMPLING_RATE/C1], [SAMPLING_RATE/C2], [-SAMPLING_RATE/(3600*Qn)]]) # see the paper p 2
+        self.A = np.array([[1-(SAMPLING_RATE/(R1*C1)), 0, 0], [0, 1-(SAMPLING_RATE/(R2*C2)), 0], [0, 0,1]])# non linear function based on the chosen model see the paper p2
+        self.B = np.array([[SAMPLING_RATE/C1], [SAMPLING_RATE/C2], [SAMPLING_RATE/(3600*Qn)]]) # see the paper p 2
         self.u = 0 # current
         self.K = None  # Kalman gain
         self.z = 0  # voltage
@@ -68,17 +67,23 @@ class EKF:
             self.data['current'] = 0
 
 
-
+    # voc 
     def h(self,x):
-        return (x ** 6) * -22.215 + (x ** 5) * 70.560 + (x ** 4) * -89.148 + (x ** 3) * 57.312 + (x ** 2) * -19.563 + x * 3.994 + 3.142
+        return (10**4)*((x**9)*0.140437+(x**8)*-0.693293+(x**7)*1.448317+(x ** 6) * -1.665299 + (x ** 5) * 1.148704 + (x ** 4) * -0.486836 + (x ** 3) * 0.125421 + (x ** 2) * -0.01891 + x * 0.001657 + 0.000269)
     def h_derivative(self,x):
-        return 3.994 + x * -19.563 * 2 + (x**2) * 57.312 * 3 + (x**3) * -89.148 * 4 + (x**4) * 70.560 * 5 + (x**5) * -22.215 * 6
+        return (10**4)*( 9*(x**8)*0.140437+8*(x**7)*-0.693293+7*(x**6)*1.448317+6*(x ** 5) * -1.665299 + 5*(x ** 4) * 1.148704 + 4*(x ** 3) * -0.486836 + 3*(x ** 2) * 0.125421 + 2*x * -0.01891 + 0.001657)
+
+    def R0(self,x):
+        return (10**3)*((x**9)*0.440568+(x**8)*-2.188575+(x**7)*4.662025+(x**6)*-5.561277+(x**5)*4.069003+(x**4)*-1.878727+(x**3)*0.541296+(x**2)*-0.092097+x*0.008056-0.000161)
+
+    def R0_derivative(self,x):
+        return (10**3)*(9*(x**8)*0.440568+8*(x**7)*-2.188575+7*(x**6)*4.662025+6*(x**5)*-5.561277+5*(x**4)*4.069003+4*(x**3)*-1.878727+3*(x**2)*0.541296+2*x*-0.092097+0.008056)
 
     def g(self,x0,x1,x2,u):
-        return - x0 - x1 - R0 * u + self.h(x2)
+        return - x0 - x1 - self.R0(x2) * u + self.h(x2)
 
     def dg(self):# observation matrix
-        return np.array([[-1, -1, self.h_derivative(self.x[2][0])]])
+        return np.array([[-1, -1, self.h_derivative(self.x[2][0])-self.R0_derivative(self.x[2][0])*self.u]])
 
 
     def predict(self):
@@ -116,12 +121,15 @@ class EKF:
 
 
     def runOffline(self):
+        self.safeX.append(self.x)
         while self.step < len(self.data.values):
             self.getmeasure()
             self.predict()
             self.correction()
             self.safeX.append(self.x)
         self.draw()
+
+
     def runOneStepOnline(self,z,u):
         self.z = z
         self.u = u
@@ -222,8 +230,8 @@ class EKF:
 
 
 import os
-for root, dirs, files in os.walk("C:/Users/tjasr/Documents/GitHub/LIBS/LIBS_Back/datasets/TestDchC/"):
+for root, dirs, files in os.walk("C:/Users/tjasr/Documents/GitHub/LIBS/LIBS_Back/datasets/Random/"):
     for file in files:
         if file.endswith(".txt"):
-            ekf = EKF("TestDchC/"+file, 1)
+            ekf = EKF("Random/"+file, 1)
             ekf.runOffline()
