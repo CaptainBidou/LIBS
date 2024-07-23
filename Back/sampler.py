@@ -1,6 +1,7 @@
 ###################################################################
 ##                   I M P O R T    P A C K A G E                ##
 ###################################################################
+
 import time
 import databaseBuild
 import pyvisa as visa
@@ -411,16 +412,6 @@ def startTestCharge(idTest,cRate):
             time.sleep(SAMPLING_RATE)
         #we wait the time
         
-
-
-
-
-
-        
-
-
-    
-
 
 def setTest(idTest,observer):
     result=databaseBuild.getTest(idTest)
