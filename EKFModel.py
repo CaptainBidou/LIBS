@@ -14,11 +14,10 @@ import pandas as pd
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
 SAMPLING_RATE = 1  # seconds
-R0 = 123.445 *10**-3
-R1 = 16.533*10**-3
-C1 = 4.378*10**3
-R2 = 2.069*10**-3
-C2 = 35.756*10**3
+R1 = 0.009818410271493
+C1 = 1.563954740330107*10**4
+R2 = 0.031463057438081
+C2 = 3.933292323912280*10**4
 Qn = 3.08
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
@@ -32,11 +31,11 @@ Qn = 3.08
 class EKF:
     def __init__(self,fileToOpen,mode):
         self.fileToOpen = fileToOpen
-        self.x = np.array([[0],[0],[0.8]]) # state vector
+        self.x = np.array([[0],[0],[0.5]]) # state vector
         if mode == 1:
-            self.P = np.diag([0.1, 0.1, 10 ** 3])  # covariance matrix
-            self.Q = 10 ** -6 * np.eye(3)  # process noise
-            self.R = 2500 # measurement noise
+            self.P = np.diag([0.001, 0.001, 0.01])  # covariance matrix
+            self.Q = 0.000001 * np.eye(3)  # process noise
+            self.R = 0.2 # measurement noise
         elif mode == 2:
             self.P = np.diag([1*10**-3, 1*10**-3, 10])
             self.Q = np.diag([1 * 10 ** -5, 1 * 10 ** -5, 1 * 10 ** -9])  # process noise
@@ -69,15 +68,21 @@ class EKF:
 
 
     def h(self,x):
-        return (x ** 6) * -22.215 + (x ** 5) * 70.560 + (x ** 4) * -89.148 + (x ** 3) * 57.312 + (x ** 2) * -19.563 + x * 3.994 + 3.142
+        return (10**4)*((x**9)*0.140437566214432+(x**8)*-0.693293580320924+(x**7)*1.448317451181394 + (x ** 6) *-1.665299094951629 + (x ** 5)*1.148704101226141 + (x ** 4)*-0.486836353839831 + (x ** 3)*0.125420712206318 + (x ** 2)*-0.018961803736654 + x*0.001657801378501 + 0.000269333059573)
     def h_derivative(self,x):
-        return 3.994 + x * -19.563 * 2 + (x**2) * 57.312 * 3 + (x**3) * -89.148 * 4 + (x**4) * 70.560 * 5 + (x**5) * -22.215 * 6
+        return (10**4)*( 9*(x**8)*0.140437566214432 + 8*(x**7)*-0.693293580320924 + 7*(x**6)*1.448317451181394 + 6*(x ** 5)*-1.665299094951629 + 5*(x ** 4)*1.148704101226141 + 4*(x ** 3)*-0.486836353839831 + 3*(x ** 2)*0.125420712206318 + 2*x*-0.018961803736654 + 0.001657801378501)
+
+    def R0(self,x):
+        return (10**3)*((x**9)*0.440568380336331+(x**8)*-2.188575118770938+(x**7)*4.662025929324535+(x**6)*-5.561277160719505+(x**5)*4.069003040512039+(x**4)*-1.878727644202677+(x**3)*0.541295950462937+(x**2)*-0.092097275963785+x*0.008056926448651-0.000160671690337)
+
+    def R0_derivative(self,x):
+        return (10**3)*(9*(x**8)*0.440568380336331+8*(x**7)*-2.188575118770938+7*(x**6)*4.662025929324535+6*(x**5)*-5.561277160719505+5*(x**4)*4.069003040512039+4*(x**3)*-1.878727644202677+3*(x**2)*0.541295950462937+2*x*-0.092097275963785+0.008056926448651)
 
     def g(self,x0,x1,x2,u):
-        return - x0 - x1 - R0*u + self.h(x2)
+        return - x0 - x1 - self.R0(x2)*u + self.h(x2)
 
     def dg(self):# observation matrix
-        return np.array([[-1, -1, self.h_derivative(self.x[2][0])]])
+        return np.array([[-1, -1, self.h_derivative(self.x[2][0])-self.R0_derivative(self.x[2][0])*self.u]])
 
 
     def predict(self):
@@ -121,9 +126,11 @@ class EKF:
             self.correction()
             self.safeX.append(self.x)
         self.draw()
-    def runOneStepOnline(self,z,u):
+    def runOneStepOnline(self,z,u,charge):
         self.z = float(z)
         self.u = float(u)
+        if charge :
+            u = -1*u
         self.predict()
         self.correction()
         self.safeX.append(self.x)

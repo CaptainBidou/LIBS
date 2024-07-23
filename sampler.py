@@ -23,6 +23,7 @@ IDTEST = 0
 OBSERVER = False
 EKF = False
 FNN = False
+CHARGE = False
 
 
 ###################################################################
@@ -73,7 +74,7 @@ def startMeasure(idTest,device,mode):
     if(FNN==True):
         pass
     if(EKF==True):
-        data = EKFModel.ekf.runOneStepOnline(voltPwrSupply,ampePwrSupply)
+        data = EKFModel.ekf.runOneStepOnline(voltPwrSupply,ampePwrSupply,CHARGE)
         x = float(data[0][2][0])
         g = float(data[1][0])
         databaseBuild.createMeasureObserver(id,3,0,0,0,0,g,x)
@@ -242,14 +243,14 @@ class PulseProfile():
         self.timePulsing = 0
 
     def setAmpl(self,c_rate):
-        self.ampl = c_rate
+        self.ampl = c_rate/100
     def getAmpl(self):
         return self.ampl
     def getTimeResting(self):
         self.timeResting = (5/10)*60*60
         return self.timeResting
     def getTimePulsing(self):
-        self.timePulsing = (5/float(self.c_rate))*60*60
+        self.timePulsing = (5/float(self.ampl))*60*60
         return self.timePulsing
 
 class ConstantProfile():
@@ -259,14 +260,14 @@ class ConstantProfile():
         self.timePulsing = 0
     
     def setAmpl(self,c_rate):
-        self.ampl = c_rate
+        self.ampl = c_rate/100
     def getAmpl(self):
         return self.ampl
     def getTimeResting(self):
         self.timeResting = 0
         return self.timeResting
     def getTimePulsing(self):
-        self.timePulsing = 100*60*60
+        self.timePulsing = 100*60*60*60
         return self.timePulsing
 
 class CCCVProfile():
@@ -286,6 +287,7 @@ class CCCVProfile():
     def getTimePulsing(self):
         self.timePulsing = 25
         return self.timePulsing
+    
 ########################################################################
 
 cell = Cell()
@@ -400,7 +402,7 @@ def startTestCharge(idTest,cRate):
             sem.release()
             if(float(current)<=cell.Icut):
                 sem.acquire()
-                output(0, devices.electLoad, "PS")
+                output(0, devices.pwrSupply, "PS")
                 global killThread
                 killThread = True
                 sem.release()
@@ -424,14 +426,15 @@ def setTest(idTest,observer):
     result=databaseBuild.getTest(idTest)
     print("result : " + str(result))
     crate = result["cRate"]
-    result = result["action"]["id_action"]
     observers = result["observers"]
+    result = result["action"]["id_action"]
+    
     global IDTEST
     global FNN
     global EKF
     global OBSERVER
     IDTEST=idTest
-    for obs in observer:
+    for obs in observers:
         if obs[0]==1:
             FNN = True
         if obs[0]==3:
@@ -440,16 +443,21 @@ def setTest(idTest,observer):
             OBSERVER=True
 
     if result==1:
+        global CHARGE
+        CHARGE = True
         startTestCharge(idTest,crate)
     elif result==2:
-        pass
-    elif result==3:
         profile = RandomProfile()
         startTestDischarge(profile,idTest)
-    elif result==4:
+    elif result==3:
         profile = PulseProfile()
+        print(crate)
         profile.setAmpl(crate)
         startTestDischarge(profile,idTest)
-    elif result==5:
+    elif result==4:
         profile = HppcProfile()
+        startTestDischarge(profile,idTest)
+    elif result==5:
+        profile=ConstantProfile()
+        profile.setAmpl(crate)
         startTestDischarge(profile,idTest)
