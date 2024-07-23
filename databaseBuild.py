@@ -60,6 +60,8 @@ if (databaseBool == False):
 
 print("Database initialized successfully")
 
+
+
 # insert data into the table
 if (databaseBool == False):
     mycursor.execute("INSERT INTO cells (name) VALUES ('BID001')")
@@ -73,7 +75,6 @@ if (databaseBool == False):
     mycursor.execute("INSERT INTO cells (name) VALUES ('BID009')")
     mycursor.execute("INSERT INTO cells (name) VALUES ('BID010')")
     mycursor.execute("INSERT INTO actions (name) VALUES ('Charge CC-CV')")
-    mycursor.execute("INSERT INTO actions (name) VALUES ('Charge Pulse')")
     mycursor.execute("INSERT INTO actions (name) VALUES ('Discharge Random')")
     mycursor.execute("INSERT INTO actions (name) VALUES ('Discharge Pulse')")
     mycursor.execute("INSERT INTO actions (name) VALUES ('Discharge HPPC')")
@@ -100,7 +101,7 @@ def startConn():
     mydbVar.commit()
     return mydbVar
 
-mycursor = mydb.cursor()
+#mycursor = mydb.cursor()
 
 def createTest(id_action, comment, id_cells,crate,id_obs):
     sql = "INSERT INTO tests (time, id_action, comment, c_rate) VALUES (%s, %s, %s, %s)"
@@ -278,17 +279,36 @@ def createObserver(name):
     return mycursor.lastrowid
 
 def getTest(id_test):
+
     #get the test the action with the name the cell with the name the observers with the name
     # test = {"id":id_test, "time":time, "action":action, "comment":comment, "cells":[cell,cell,...]}
     mycursor.execute("SELECT * FROM tests WHERE id = %s", (id_test,))
     test = mycursor.fetchall()
     test = test[0]
+    print(test)
     mycursor.execute("SELECT * FROM actions WHERE id = %s", (test[2],))
     action = mycursor.fetchall()
     action = action[0]
+    print(action)
+
+
+    # mycursor.close()
+    # mydb.close()
+
+    # mydb = mysql.connector.connect(
+    # host="localhost",
+    # user="root",
+    # password="",
+    # database="LIBS")
+    
+    # mycursor = mydb.cursor()
+
+
+
     mycursor.execute("SELECT * FROM cells_relations WHERE id_test = %s", (id_test,))
     cells = mycursor.fetchall()
     cellsTab = []
+    print(cells)
 
     for cell in cells:
         mycursor.execute("SELECT * FROM cells WHERE id = %s", (cell[1],))
@@ -299,7 +319,7 @@ def getTest(id_test):
     observersTab = []
 
     for ob in observers:
-        mycursor.execute("SELECT * FROM observers WHERE id = %s", (ob[0],))
+        mycursor.execute("SELECT * FROM observers WHERE id = %s", (ob[1],))
         observersTab.append(mycursor.fetchall()[0])
     
     test = {"id":test[0], "time":str(test[1]), "action":{"id_action":action[0],"name":action[1]},
