@@ -15,11 +15,11 @@ import matplotlib.pyplot as plt
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
 SAMPLING_RATE = 1  # seconds
-R0 = 123.445*10**-3
-R1 = 16.533*10**-3
-C1 = 4.378*10**3
-R2 = 2.069*10**-3
-C2 = 35.756*10**3
+R0 = 0.085870708508781
+R1 = 0.009818410271493
+C1 = 1.563954740330107*10**4
+R2 = 0.031463057438081
+C2 = 3.933292323912280*10**3
 Qn = 3.08
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
@@ -44,7 +44,7 @@ class observer:
 
         self.save.append([self.xhat, self.yhat])
         if fileToOpen is not None :
-            with open('C:/Users/tjasr/Documents/GitHub/LIBS/LIBS_Back/datasets/'+fileToOpen, 'r') as file:
+            with open('C:/Users/tjasr/Desktop/LIBS-prod/LIBS/Back/datasets/Hppc/BID004_HPPC_02062024.txt', 'r') as file:
                 self.data = pd.read_csv(file, delimiter=';')
                 print(self.data)
         else:
@@ -73,7 +73,7 @@ class observer:
     def setXHat(self,z,u):
         return np.dot(self.A,self.xhat) + self.B*u+self.L * (z-self.yhat)
     def h(self,x):
-        return (x ** 6) * -22.215 + (x ** 5) * 70.560 + (x ** 4) * -89.148 + (x ** 3) * 57.312 + (x ** 2) * -19.563 + x * 3.994 + 3.142
+       return (10**4)*((x**9)*0.140437566214432+(x**8)*-0.693293580320924+(x**7)*1.448317451181394 + (x ** 6) *-1.665299094951629 + (x ** 5)*1.148704101226141 + (x ** 4)*-0.486836353839831 + (x ** 3)*0.125420712206318 + (x ** 2)*-0.018961803736654 + x*0.001657801378501 + 0.000269333059573)
 
 def test(nom):
     o = observer(nom)
@@ -115,3 +115,6 @@ def test(nom):
     plt.ylabel('voltage/current')
     ax.legend()
     plt.show()
+
+
+# test('C:/Users/tjasr/Desktop/LIBS-prod/LIBS/Back/datasets/Hppc/BID004_HPPC_02062024.txt')
