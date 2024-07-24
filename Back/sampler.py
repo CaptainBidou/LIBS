@@ -72,12 +72,15 @@ def startMeasure(idTest,device,mode):
     sem.release() 
     id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, 0, 0)
 
-    threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,))
-    threadEstimation.start()
-
-
-    #send result to the database
-    
+    if FNN == True:
+        threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,1,))
+        threadEstimation.start()
+    if EKF == True:
+        threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,3,))
+        threadEstimation.start()
+    if OBSERVER == True:
+        threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,4,))
+        threadEstimation.start()
     exit()
     
 def startProfilePS(value,device):
@@ -198,7 +201,7 @@ class Counter():
 
 
 class estimator():
-    def __init__(self,idMeasure,volt,amp):
+    def __init__(self,idMeasure,volt,amp,id):
         self.idObserver = id
         self.volt = volt
         self.amp = amp
@@ -206,23 +209,23 @@ class estimator():
         self.run()
 
     def run(self):
-        if(FNN==True):
+        if(self.idObserver==1):
             # update with fnn model
             g = 0
             x = 0
-            databaseBuild.createMeasureObserver(self.idMeasure,1,0,0,0,0,g,x) # not sure 
+            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x) # not sure 
             pass
-        if(EKF==True):
+        if(self.idObserver==3):
             data = EKFModel.ekf.runOneStepOnline(self.volt,self.amp,CHARGE)
             x = float(data[0][2][0])
             g = float(data[1][0])
-            databaseBuild.createMeasureObserver(self.idMeasure,3,0,0,0,0,g,x)
+            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
             pass
-        if(OBSERVER==True):
+        if(self.idObserver==4):
             data = stateObserver.observer.nextStep(self.volt,self.amp)
             x = float(data[0])
             g = float(data[1])
-            databaseBuild.createMeasureObserver(self.idMeasure,4,0,0,0,0,g,x)
+            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
             pass
         exit()
         
