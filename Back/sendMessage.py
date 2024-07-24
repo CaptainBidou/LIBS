@@ -1,14 +1,22 @@
-import pywhatkit
+# This file is to send a message with discord webhook
+#
 
-def send_message():
+import requests
+import json
 
-    import time
-    time = time.localtime()
-    hour = time.tm_hour
-    if time.tm_min<56:
-        minute = time.tm_min +2
-    else :
-        hour = hour+1
-        minute=2
-    pywhatkit.sendwhatmsg("+55 92 8129-5256","🤖 The bot says : 'Battery test is finished !'", hour, minute, 30, tab_close=True, close_time=20)
-    #pywhatkit.sendwhatmsg("+33 0630307144","🤖 The bot says : 'Battery test is finished !'", hour, minute, 30, tab_close=True, close_time=20)
+def sendMessage(message):
+    url = 'https://discord.com/api/webhooks/1265666843448709202/SJyr_8SfsZuKB0fm1w4u6AhwbExoXyFQP6znNLoR6EFbkBrQMH7eZn2FRk919_MUvxSE'
+    data = {"content": message}
+    headers = {"Content-Type": "application/json"}
+    result = requests.post(url, data=json.dumps(data), headers=headers)
+    try:
+        result.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        print(err)
+    else:
+        print("Payload delivered successfully, code {}.".format(result.status_code))
+        print(result.text)
+    return result.status_code
+
+if __name__ == "__main__":
+    sendMessage("Hello World")
