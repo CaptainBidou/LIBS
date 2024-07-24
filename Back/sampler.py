@@ -72,15 +72,10 @@ def startMeasure(idTest,device,mode):
     sem.release() 
     id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, 0, 0)
 
-    if(FNN==True):
-        pass
-    if(EKF==True):
-        data = EKFModel.ekf.runOneStepOnline(voltPwrSupply,ampePwrSupply,CHARGE)
-        x = float(data[0][2][0])
-        g = float(data[1][0])
-        databaseBuild.createMeasureObserver(id,3,0,0,0,0,g,x)
-    if(OBSERVER==True):
-        pass
+    threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,))
+    threadEstimation.start()
+
+
     #send result to the database
     
     exit()
@@ -200,6 +195,37 @@ class Counter():
     def stop(self):
         self.done = True
 
+
+
+class estimator():
+    def __init__(self,idMeasure,volt,amp):
+        self.idObserver = id
+        self.volt = volt
+        self.amp = amp
+        self.idMeasure = idMeasure
+        self.run()
+
+    def run(self):
+        if(FNN==True):
+            # update with fnn model
+            g = 0
+            x = 0
+            databaseBuild.createMeasureObserver(self.idMeasure,1,0,0,0,0,g,x) # not sure 
+            pass
+        if(EKF==True):
+            data = EKFModel.ekf.runOneStepOnline(self.volt,self.amp,CHARGE)
+            x = float(data[0][2][0])
+            g = float(data[1][0])
+            databaseBuild.createMeasureObserver(self.idMeasure,3,0,0,0,0,g,x)
+            pass
+        if(OBSERVER==True):
+            data = stateObserver.observer.nextStep(self.volt,self.amp)
+            x = float(data[0])
+            g = float(data[1])
+            databaseBuild.createMeasureObserver(self.idMeasure,4,0,0,0,0,g,x)
+            pass
+        exit()
+        
 ########################################################################
 class HppcProfile():
     def __init__(self):
