@@ -2,3 +2,4 @@ BenchLIBS.bat
 Back/datasets/*
 Back/pyvisa.py
 __pycache__/*
+LIBS/Back/__pycache__/*
