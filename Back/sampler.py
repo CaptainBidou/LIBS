@@ -380,7 +380,7 @@ def startTestDischarge(profile,idTest):
                 output(0, devices.electLoad, "EL")
                 sem.release()
                 
-                sendMessage.send_message("Test is over")
+                sendMessage.sendMessage("Test is over")
                 exit()
             time.sleep(SAMPLING_RATE)
 
@@ -436,7 +436,7 @@ def startTestCharge(idTest,cRate):
                 global killThread
                 killThread = True
                 sem.release()
-                sendMessage.send_message("Test is over")
+                sendMessage.sendMessage("Test is over")
                 exit()
             time.sleep(SAMPLING_RATE)
         #we wait the time

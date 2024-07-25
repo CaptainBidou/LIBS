@@ -55,10 +55,9 @@ class observer:
 
     def nextStep(self, z, u):
         self.xhat = self.setXHat(self.lastz, self.lastu)
-        print(self.setPhiHat())
-        self.lastu = u
-        self.lastz = z
-        self.yhat = self.setYHat(u)
+        self.lastu = float(u)
+        self.lastz = float(z)
+        self.yhat = self.setYHat(self.lastu)
         self.save.append([self.xhat[2][0], self.yhat[0]])
         return [self.xhat[2][0], self.yhat[0]]
 

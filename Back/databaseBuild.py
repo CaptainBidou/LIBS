@@ -279,48 +279,42 @@ def createObserver(name):
     return mycursor.lastrowid
 
 def getTest(id_test):
+    
+    con = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="LIBS")
+    cur = con.cursor()
+
 
     #get the test the action with the name the cell with the name the observers with the name
     # test = {"id":id_test, "time":time, "action":action, "comment":comment, "cells":[cell,cell,...]}
-    mycursor.execute("SELECT * FROM tests WHERE id = %s", (id_test,))
-    test = mycursor.fetchall()
+    cur.execute("SELECT * FROM tests WHERE id = %s", (id_test,))
+    test = cur.fetchall()
     test = test[0]
     print(test)
-    mycursor.execute("SELECT * FROM actions WHERE id = %s", (test[2],))
-    action = mycursor.fetchall()
+    cur.execute("SELECT * FROM actions WHERE id = %s", (test[2],))
+    action = cur.fetchall()
     action = action[0]
     print(action)
 
-
-    # mycursor.close()
-    # mydb.close()
-
-    # mydb = mysql.connector.connect(
-    # host="localhost",
-    # user="root",
-    # password="",
-    # database="LIBS")
-    
-    # mycursor = mydb.cursor()
-
-
-
-    mycursor.execute("SELECT * FROM cells_relations WHERE id_test = %s", (id_test,))
-    cells = mycursor.fetchall()
+    cur.execute("SELECT * FROM cells_relations WHERE id_test = %s", (id_test,))
+    cells = cur.fetchall()
     cellsTab = []
     print(cells)
 
     for cell in cells:
-        mycursor.execute("SELECT * FROM cells WHERE id = %s", (cell[1],))
-        cellsTab.append(mycursor.fetchall()[0])
+        cur.execute("SELECT * FROM cells WHERE id = %s", (cell[1],))
+        cellsTab.append(cur.fetchall()[0])
     
-    mycursor.execute("SELECT * FROM observers_relations WHERE id_test = %s", (id_test,))
-    observers = mycursor.fetchall()
+    cur.execute("SELECT * FROM observers_relations WHERE id_test = %s", (id_test,))
+    observers = cur.fetchall()
     observersTab = []
 
     for ob in observers:
-        mycursor.execute("SELECT * FROM observers WHERE id = %s", (ob[1],))
-        observersTab.append(mycursor.fetchall()[0])
+        cur.execute("SELECT * FROM observers WHERE id = %s", (ob[1],))
+        observersTab.append(cur.fetchall()[0])
     
     test = {"id":test[0], "time":str(test[1]), "action":{"id_action":action[0],"name":action[1]},
              "comment":test[3], "cells":cellsTab, "cRate":test[4],
