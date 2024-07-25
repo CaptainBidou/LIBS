@@ -118,3 +118,7 @@ def test(nom):
 
 
 # test('C:/Users/tjasr/Desktop/LIBS-prod/LIBS/Back/datasets/Hppc/BID004_HPPC_02062024.txt')
+###################################################################
+##                   G L O B A L   V A R I A B L E S             ##
+###################################################################
+observer = observer(None)
