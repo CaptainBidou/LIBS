@@ -326,7 +326,7 @@ class queue():
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
-fnn = fnn('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
+fnn = fnn('C:/LIBS/Back/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
 #fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
 
 
