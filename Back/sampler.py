@@ -325,7 +325,7 @@ class DSTProfile():
         self.ampl = [0.25, 0.5, 1.0, 1.5]
         self.stepRest=0
         self.timeResting = [0,0,0,30*60]
-        self.timePulsing = 171
+        self.timePulsing = 55
 
     def getAmpl(self):
         record = self.ampl[self.stepAmpl]
