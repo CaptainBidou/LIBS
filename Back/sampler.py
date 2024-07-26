@@ -504,3 +504,6 @@ def setTest(idTest,observer):
         profile=ConstantProfile()
         profile.setAmpl(crate)
         startTestDischarge(profile,idTest)
+    elif result==6:
+        profile=DSTProfile()
+        startTestDischarge(profile,idTest)
