@@ -174,6 +174,8 @@ class fnn():
         self.queue = queue(20)
 
     def runOneStepDynamicOnline(self,volt,current):
+        volt = float(volt)
+        current = float(current)
         self.queue.put(volt,current)
         return self.runOneStepDynamic(self.queue.q,20)
 

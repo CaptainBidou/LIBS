@@ -12,6 +12,7 @@ from threading import Thread
 import sendMessage
 import EKFModel
 import stateObserver
+import neuralNetwork
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -210,9 +211,9 @@ class estimator():
 
     def run(self):
         if(self.idObserver==1):
-            # update with fnn model
-            g = 0
-            x = 0
+            data = neuralNetwork.fnn.runOneStepDynamicOnline(self.volt,self.amp)
+            g = float(data[0][1])
+            x = float(data[0][0])
             databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x) # not sure 
             pass
         if(self.idObserver==3):
@@ -412,10 +413,10 @@ def startTestDischarge(profile,idTest):
         # config the ouput
         startTime = time.time()
         
-        sem.acquire()
-        
-        output(0, devices.electLoad, "EL")
-        sem.release()
+        if(time.time() - startTime < timeResting):#it's always true but not for the DST profile ( check the trick )
+            sem.acquire()
+            output(0, devices.electLoad, "EL")
+            sem.release()
         
         while (time.time() - startTime < timeResting):
             print("timeResting")
