@@ -3,6 +3,7 @@ Back/datasets/*
 Back/pyvisa.py
 __pycache__/*
 LIBS/Back/__pycache__/*
+Back/__pycache__/*
 libts_start.bat
 libts_stop.bat
 LIBS_Front/*
