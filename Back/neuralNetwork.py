@@ -144,6 +144,15 @@ def prepareDatasetDynamic():
 
 
 
+def prepareDatasetDynamicNoised():
+    entree,sortie = prepareDatasetDynamic()
+    for i in range(len(entree)):
+        for i in range(len(entree[i])):
+            entree[i][0] = entree[i][0] + np.random.normal(0,0.2)
+            entree[i][1] = entree[i][1] + np.random.normal(0,0.02)
+    return entree,sortie
+
+
 def createModel(entree,sortie,epochs,name):
     model = Sequential()
 
@@ -321,9 +330,9 @@ class queue():
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
-fnn = fnn('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
+fnn = fnn('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/DYNAMIC_NOISED_BID001_BID002_BID003_20-20-2.keras')
 fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
 
 
-# entree,sortie = prepareDatasetDynamic()
-# createModel(entree,sortie,100,'DYNAMIC_BID001_BID002_BID003_20-20-2')
+# entree,sortie = prepareDatasetDynamicNoised()
+# createModel(entree,sortie,100,'DYNAMIC_NOISED_BID001_BID002_BID003_20-20-2')
