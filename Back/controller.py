@@ -122,6 +122,24 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # dataRepsonse = [{‘id’:,’id_action’:,’comment’:,’cells’:[]}]
             response = databaseBuild.getTest(data["id_test"])
             pass
+        elif id == 7:
+            # get the tests
+            # data = {}
+            # dataRepsonse = [{‘id’:,’id_action’:,’comment’:,’cells’:[]}]
+            response = databaseBuild.getTests()
+            temp = []
+            for i in response:
+                i = databaseBuild.getTest(i[0])
+                temp.append(i)
+            response = temp
+            
+            pass
+        elif id ==8 :
+            # export dataset 
+            # data = {‘id_test’:}
+            # dataRepsonse = file
+            response = databaseBuild.exportDataset(data)
+            pass
 
         elif id == 10:
             # Create a test
