@@ -354,3 +354,11 @@ def exportDataset(idTest):
     #         file.write(str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+'\n')
     # blob = open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'r').read()
     return blob
+
+
+def createCell(name):
+    sql = "INSERT INTO cells (name) VALUES (%s)"
+    val = (name,)
+    mycursor.execute(sql, val)
+    mydb.commit()
+    return mycursor.lastrowid

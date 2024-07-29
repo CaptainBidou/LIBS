@@ -172,6 +172,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             thread2.join()
             response = True
             pass
+
+        elif id == 13:
+            # create a cell
+            # data = {name}
+            # dataRepsonse = [{‘id’:,’Name’:}]
+            response = databaseBuild.createCell(data["name"])
         else:
             exit()
 
