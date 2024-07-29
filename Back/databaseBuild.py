@@ -342,12 +342,15 @@ def exportDataset(idTest):
     #0: time, 1: voltage, 2: current
 
     #create the file 
-    f = open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'w')
+    # f = open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'w')
 
-
+    blob = ""
     data = getDataset(idTest)
-    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'w') as file:
-        for i in range(len(data[0])):
-            file.write(str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+'\n')
+    for i in range(len(data[0])):
+        blob += str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+'\n'
 
-    return 'C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt'
+    # with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'w') as file:
+    #     for i in range(len(data[0])):
+    #         file.write(str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+'\n')
+    # blob = open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'r').read()
+    return blob
