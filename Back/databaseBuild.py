@@ -39,7 +39,7 @@ if (databaseBool == False):
     mycursor.execute("CREATE TABLE cells (id integer PRIMARY KEY AUTO_INCREMENT, name varchar(255) UNIQUE)")
     mycursor.execute("CREATE TABLE actions (id integer PRIMARY KEY AUTO_INCREMENT, name varchar(255) UNIQUE)")
     mycursor.execute(
-        "CREATE TABLE tests (id integer PRIMARY KEY AUTO_INCREMENT, time timestamp, id_action integer, comment varchar(255))")
+        "CREATE TABLE tests (id integer PRIMARY KEY AUTO_INCREMENT, time timestamp, id_action integer, comment varchar(255),c_rate integer)")
     mycursor.execute(
         "CREATE TABLE measures (id integer PRIMARY KEY AUTO_INCREMENT, id_test integer, time timestamp, current float, output_voltage float, ambient_temperature float, surface_temperature float)")
     mycursor.execute("CREATE TABLE observers (id integer PRIMARY KEY AUTO_INCREMENT, name varchar(255) UNIQUE)")
@@ -320,3 +320,45 @@ def getTest(id_test):
              "comment":test[3], "cells":cellsTab, "cRate":test[4],
              "observers":observersTab}
     return test
+
+
+def getDataset(idTest):
+    time = []
+    voltage = []
+    current = []
+    # get the data of the test idTest
+    mycursor.execute("SELECT output_voltage,current FROM measures WHERE id_test = %s ORDER BY ID ASC", (idTest,))
+    measures = mycursor.fetchall()
+    compteur = 0
+    for measure in measures:
+        time.append(compteur)
+        compteur += 1
+        voltage.append(measure[0])
+        current.append(measure[1])
+    return [time, voltage, current]
+
+
+def exportDataset(idTest):
+    #0: time, 1: voltage, 2: current
+
+    #create the file 
+    # f = open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'w')
+
+    blob = ""
+    data = getDataset(idTest)
+    for i in range(len(data[0])):
+        blob += str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+'\n'
+
+    # with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'w') as file:
+    #     for i in range(len(data[0])):
+    #         file.write(str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+'\n')
+    # blob = open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'r').read()
+    return blob
+
+
+def createCell(name):
+    sql = "INSERT INTO cells (name) VALUES (%s)"
+    val = (name,)
+    mycursor.execute(sql, val)
+    mydb.commit()
+    return mycursor.lastrowid
