@@ -214,7 +214,7 @@ class estimator():
             data = neuralNetwork.fnn.runOneStepDynamicOnline(self.volt,self.amp)
             g = float(data[0][1])
             x = float(data[0][0])
-            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x) # not sure 
+            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
             pass
         if(self.idObserver==3):
             data = EKFModel.ekf.runOneStepOnline(self.volt,self.amp,CHARGE)
@@ -481,10 +481,16 @@ def setTest(idTest,observer):
     for obs in observers:
         if obs[0]==1:
             FNN = True
+            EKF = False
+            OBSERVER =False
         if obs[0]==3:
             EKF = True
+            OBSERVER =False
+            FNN = False
         if obs[0]==4:
             OBSERVER=True
+            FNN = False
+            EKF = False
 
     if result==1:
         global CHARGE
