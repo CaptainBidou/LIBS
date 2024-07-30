@@ -180,6 +180,13 @@ def createModel(entree,sortie,epochs,name):
 class fnn():
     def __init__(self,file):
         self.model = keras.models.load_model(file)
+        self.queue = queue(20)
+
+    def runOneStepDynamicOnline(self,volt,current):
+        volt = float(volt)
+        current = float(current)
+        self.queue.put(volt,current)
+        return self.runOneStepDynamic(self.queue.q,20)
 
     def runOneStep(self,volt,current):
         entree = np.array([[float(volt),float(current)]])
@@ -330,8 +337,13 @@ class queue():
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
-fnn = fnn('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/DYNAMIC_NOISED_BID001_BID002_BID003_20-20-2.keras')
-fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
+
+#fnn = fnn('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/DYNAMIC_NOISED_BID001_BID002_BID003_20-20-2.keras')
+#fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
+
+fnn = fnn('C:/LIBS/Back/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
+#fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
+
 
 
 # entree,sortie = prepareDatasetDynamicNoised()
