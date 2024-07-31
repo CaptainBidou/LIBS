@@ -178,6 +178,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # data = {name}
             # dataRepsonse = [{‘id’:,’Name’:}]
             response = databaseBuild.createCell(data["name"])
+
+        elif id==14:
+            # import dataset
+            # data = {'id_action':,'comment':,cells:[],file:,separator:}
+            # dataRepsonse = {‘id’:}
+            response = databaseBuild.importDataset(data["id_action"], data["comment"], data["cells"],data["file"],data["separator"])
         else:
             exit()
 
