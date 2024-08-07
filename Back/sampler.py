@@ -13,6 +13,7 @@ import sendMessage
 import EKFModel
 import stateObserver
 import neuralNetwork
+import serialComm
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -71,7 +72,9 @@ def startMeasure(idTest,device,mode):
     voltPwrSupply = str(round(float(configMeasureQuery(device, "VOLT")), 3))
     ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
     sem.release() 
-    id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, 0, 0)
+    surfaceTemp = serialComm.send_data("11")
+    ambientTemp = serialComm.send_data("10")
+    id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, ambientTemp, surfaceTemp)
 
     if FNN == True:
         threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,1,))

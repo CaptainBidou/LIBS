@@ -141,6 +141,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             response = databaseBuild.exportDataset(data)
             pass
 
+        elif id ==9:
+            #get the accuracy of each observer
+            data = {'useless':'useless'}
+            response = databaseBuild.getAccuracy()
+
         elif id == 10:
             # Create a test
             # data = {'id_action':,'comment':,cells:[]}
@@ -178,6 +183,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # data = {name}
             # dataRepsonse = [{‘id’:,’Name’:}]
             response = databaseBuild.createCell(data["name"])
+
+        elif id==14:
+            # import dataset
+            # data = {'id_action':,'comment':,cells:[],file:,separator:}
+            # dataRepsonse = {‘id’:}
+            response = databaseBuild.importDataset(data["id_action"], data["comment"], data["cells"],data["file"],data["separator"])
         else:
             exit()
 

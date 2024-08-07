@@ -210,7 +210,7 @@ def getMeasures(id_test, id_last_measure):
 
         
         tab = json.dumps({'id':listCopy[0],'id_test':listCopy[1],'time':str(listCopy[2]),'current':listCopy[3],
-                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature':listCopy[6],
+                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature':listCopy[6],'estimator_surface_temperature':obsCopy[0][5],
                           'estimator_voltage':obsCopy[0][7],'estimator_soc':obsCopy[0][8]})
         cpyMes.append(tab)
 
@@ -362,3 +362,29 @@ def createCell(name):
     mycursor.execute(sql, val)
     mydb.commit()
     return mycursor.lastrowid
+
+def importDataset(id_action, comment,cRate, cells,file,separator):
+    idTest = createTest(id_action, comment, cells,cRate,[])
+    #file = time;voltage;current;idk;idk
+    data = np.loadtxt(file, delimiter=separator, skiprows=1, usecols=(1,2), dtype=float)
+    voltage = []
+    current = []
+    for i in range(len(data)):
+        voltage.append(data[i][0])
+        current.append(data[i][1])
+        createMeasure(idTest, time.strftime('%Y-%m-%d %H:%M:%S'), current[i], voltage[i], 0, 0)
+    return idTest
+
+def getAccuracy():
+    #need to take every soc measures for each observer and compare them to the real soc
+    #return the accuracy of each observer
+
+    sql = "SELECT soc FROM measures_observers group by id_observer"
+    mycursor.execute(sql)
+    socs = mycursor.fetchall()
+
+    sql = "SELECT soc FROM measures"
+
+
+# importDataset(1, "comment",0.25, [1,2,3], 'C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/TestChCn/BID002_ChConst050_04062024.txt', ';')
+
