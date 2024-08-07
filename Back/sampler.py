@@ -12,6 +12,7 @@ from threading import Thread
 import sendMessage
 import EKFModel
 import stateObserver
+import neuralNetwork
 import serialComm
 
 ###################################################################
@@ -213,9 +214,9 @@ class estimator():
 
     def run(self):
         if(self.idObserver==1):
-            # update with fnn model
-            g = 0
-            x = 0
+            data = neuralNetwork.fnn.runOneStepDynamicOnline(self.volt,self.amp)
+            g = float(data[0][1])
+            x = float(data[0][0])
             databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x) # not sure 
             pass
         if(self.idObserver==3):
@@ -327,7 +328,7 @@ class DSTProfile():
         self.ampl = [0.25, 0.5, 1.0, 1.5]
         self.stepRest=0
         self.timeResting = [0,0,0,30*60]
-        self.timePulsing = 171
+        self.timePulsing = 55
 
     def getAmpl(self):
         record = self.ampl[self.stepAmpl]
@@ -415,10 +416,10 @@ def startTestDischarge(profile,idTest):
         # config the ouput
         startTime = time.time()
         
-        sem.acquire()
-        
-        output(0, devices.electLoad, "EL")
-        sem.release()
+        if(time.time() - startTime < timeResting):#it's always true but not for the DST profile ( check the trick )
+            sem.acquire()
+            output(0, devices.electLoad, "EL")
+            sem.release()
         
         while (time.time() - startTime < timeResting):
             print("timeResting")
@@ -506,4 +507,7 @@ def setTest(idTest,observer):
     elif result==5:
         profile=ConstantProfile()
         profile.setAmpl(crate)
+        startTestDischarge(profile,idTest)
+    elif result==6:
+        profile=DSTProfile()
         startTestDischarge(profile,idTest)
