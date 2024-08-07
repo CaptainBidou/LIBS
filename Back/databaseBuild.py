@@ -375,6 +375,15 @@ def importDataset(id_action, comment,cRate, cells,file,separator):
         createMeasure(idTest, time.strftime('%Y-%m-%d %H:%M:%S'), current[i], voltage[i], 0, 0)
     return idTest
 
+def getAccuracy():
+    #need to take every soc measures for each observer and compare them to the real soc
+    #return the accuracy of each observer
+
+    sql = "SELECT soc FROM measures_observers group by id_observer"
+    mycursor.execute(sql)
+    socs = mycursor.fetchall()
+
+    sql = "SELECT soc FROM measures"
 
 
 # importDataset(1, "comment",0.25, [1,2,3], 'C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/TestChCn/BID002_ChConst050_04062024.txt', ';')

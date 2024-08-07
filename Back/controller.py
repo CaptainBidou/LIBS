@@ -141,6 +141,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             response = databaseBuild.exportDataset(data)
             pass
 
+        elif id ==9:
+            #get the accuracy of each observer
+            data = {'useless':'useless'}
+            response = databaseBuild.getAccuracy()
+
         elif id == 10:
             # Create a test
             # data = {'id_action':,'comment':,cells:[]}
