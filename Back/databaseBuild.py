@@ -210,8 +210,8 @@ def getMeasures(id_test, id_last_measure):
 
         
         tab = json.dumps({'id':listCopy[0],'id_test':listCopy[1],'time':str(listCopy[2]),'current':listCopy[3],
-                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature':listCopy[6],'estimator_surface_temperature':obsCopy[0][5],
-                          'estimator_voltage':obsCopy[0][7],'estimator_soc':obsCopy[0][8]})
+                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature':listCopy[6],'estimator_surface_temperature':obsCopy[0][5],'estimator_core_temperature':obsCopy[0][6]
+                          ,'estimator_voltage':obsCopy[0][7],'estimator_soc':obsCopy[0][8]})
         cpyMes.append(tab)
 
 
