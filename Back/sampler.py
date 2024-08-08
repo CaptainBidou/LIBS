@@ -83,8 +83,12 @@ def startMeasure(idTest,device,mode):
         threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,3,))
         threadEstimation.start()
     if OBSERVER == True:
-        threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,4,))
-        threadEstimation.start()
+        if CHARGE == True:
+            threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,"-"+ampePwrSupply,4,))
+            threadEstimation.start()
+        else:
+            threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,4,))
+            threadEstimation.start()
     exit()
     
 def startProfilePS(value,device):
