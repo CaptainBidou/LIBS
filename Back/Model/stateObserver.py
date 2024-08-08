@@ -2,7 +2,6 @@
 ##                   I M P O R T    P A C K A G E                ##
 ###################################################################
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
 
@@ -33,10 +32,10 @@ class observer:
     def __init__(self,fileToOpen):
         self.A = np.array([[1-(SAMPLING_RATE/(R1*C1)), 0, 0], [0, 1-(SAMPLING_RATE/(R2*C2)), 0], [0, 0, 1]])
         self.B = np.array([[SAMPLING_RATE/C1], [SAMPLING_RATE/C2], [-SAMPLING_RATE/(3600*Qn)]])
-        self.C = np.array([-1,-1,0.316])
+        self.C = np.array([-1,-1,0.859368465423472])
         self.D = -R0
         self.L = (10**(-4)) * np.array([[0.496817], [-0.194432], [335.851524]])
-        self.xhat = np.array([[0], [0], [0.8]])
+        self.xhat = np.array([[0], [0], [0.5]])
         self.lastu = 0
         self.lastz = 0
         self.yhat = self.setYHat(0)
@@ -44,11 +43,12 @@ class observer:
 
         self.save.append([self.xhat, self.yhat])
         if fileToOpen is not None :
-            with open('C:/Users/tjasr/Desktop/LIBS-prod/LIBS/Back/datasets/Hppc/BID004_HPPC_02062024.txt', 'r') as file:
-                self.data = pd.read_csv(file, delimiter=';')
+            with open(fileToOpen, 'r') as file:
+                self.data = np.loadtxt(file, delimiter=';', skiprows=1, usecols=(1, 2))
                 print(self.data)
         else:
-            self.data = pd.DataFrame()# 2 columns time and voltage
+            # self.data = pd.DataFrame()# 2 columns time and voltage
+            self.data = {}
             self.data['time'] = np.arange(0, 1, 1)
             self.data['voltage'] = 0
             self.data['current'] = 0
@@ -64,7 +64,7 @@ class observer:
     def setPhiHat(self):
         soc = self.xhat[2][0]
         print("h :" + str(self.h(soc)))
-        return self.h(soc) - 0.316 * soc
+        return self.h(soc) - 0.859368465423472 * soc
 
     def setYHat(self,u):
         return np.dot(self.C,self.xhat) + self.D * u + self.setPhiHat()
@@ -79,22 +79,22 @@ def test(nom):
     saveVoltage = [0]
     saveCurrent = [0]
     saveTime = [0]
-    socTab = [1]
+    socTab = [0]
 
     socEstimator = []
     gTab = []
     socEstimator.append(o.xhat[2][0])
     gTab.append(o.yhat[0])
 
-    for i in range(0,3000):
-        val = o.nextStep(o.data.values[i][1], o.data.values[i][2])
+    for i in range(1,len(o.data)):
+        val = o.nextStep(o.data[i][0], -o.data[i][1])
         print(i)
         print(val)
         socEstimator.append(val[0])
         gTab.append(val[1])
-        saveVoltage.append(o.data.values[i][1])
-        saveCurrent.append(o.data.values[i][2])
-        socTab.append(socTab[i-1]-(saveCurrent[i-1]*(1/(3600*Qn))))
+        saveVoltage.append(o.data[i][0])
+        saveCurrent.append(o.data[i][1])
+        socTab.append(socTab[i-1]+(saveCurrent[i-1]*(1/(3600*Qn))))
         saveTime.append(i)
 
     fig2, ax2 = plt.subplots()
@@ -116,8 +116,8 @@ def test(nom):
     plt.show()
 
 
-# test('C:/Users/tjasr/Desktop/LIBS-prod/LIBS/Back/datasets/Hppc/BID004_HPPC_02062024.txt')
+test('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/BID001_ChConst025_04062024.txt')
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
-observer = observer(None)
+# observer = observer(None)
