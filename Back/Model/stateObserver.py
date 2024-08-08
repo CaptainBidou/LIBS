@@ -116,8 +116,8 @@ def test(nom):
     plt.show()
 
 
-test('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/BID001_ChConst025_04062024.txt')
+# test('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/BID001_ChConst025_04062024.txt')
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
-# observer = observer(None)
+observer = observer(None)
