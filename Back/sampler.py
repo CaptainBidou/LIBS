@@ -9,11 +9,11 @@ import random
 import threading
 import atexit
 from threading import Thread
-import sendMessage
-import EKFModel
-import stateObserver
-import neuralNetwork
-import serialComm
+import Communication.sendMessage as sendMessage
+import Model.ExtendedKalmanFilter as ExtendedKalmanFilter
+import Model.stateObserver as stateObserver
+import Model.neuralNetwork as neuralNetwork
+import Communication.serialComm as serialComm
 
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
@@ -220,7 +220,7 @@ class estimator():
             databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
             pass
         if(self.idObserver==3):
-            data = EKFModel.ekf.runOneStepOnline(self.volt,self.amp,CHARGE)
+            data = ExtendedKalmanFilter.ekf.runOneStepOnline(self.volt,self.amp,CHARGE)
             x = float(data[0][2][0])
             g = float(data[1][0])
             databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
@@ -371,6 +371,7 @@ def startTestDischarge(profile,idTest):
     
     #output(1, devices.electLoad, "EL")
     #thread = Thread(target=Counter, args=(1,))
+    startProfileEL(0, 5, devices.electLoad)
     interrupt = Thread(target=Counter, args=(SAMPLING_RATE,idTest,devices.electLoad,"EL",))
     interrupt.start()
     #interrupt = Counter(SAMPLING_RATE,idTest,devices.electLoad,"EL")
@@ -379,12 +380,15 @@ def startTestDischarge(profile,idTest):
         sem.acquire()
         startTime = time.time()
         startProfileEL(profile.getAmpl()*cell.Qn, 5, devices.electLoad)
-        configELWrite(devices.electLoad)
-        configELModeQuery(devices.electLoad)
+        
+        #configELWrite(devices.electLoad)
+        #configELModeQuery(devices.electLoad)
         timePulsing = profile.getTimePulsing()
         print(timePulsing)
         # config the ouput
+        #time.sleep(1)
         output(1, devices.electLoad, "EL")
+
         sem.release()
         while (time.time() - startTime < timePulsing):
             print("timePulsing")
@@ -399,9 +403,9 @@ def startTestDischarge(profile,idTest):
             global killThread
             if(float(voltage) <= cell.Vmin or killThread):
                 killThread = True
-                print("Voltage is too low")
+               # print("Voltage is too low")
                 
-                print("We turn off everything before leaving")
+                #print("We turn off everything before leaving")
                 sem.acquire()
                 
                 output(0, devices.electLoad, "EL")
@@ -424,7 +428,7 @@ def startTestDischarge(profile,idTest):
         while (time.time() - startTime < timeResting):
             print("timeResting")
             if(killThread):
-                interrupt.stop()
+                #interrupt.stop()
                 exit()
             #we wait the time
             time.sleep(SAMPLING_RATE)

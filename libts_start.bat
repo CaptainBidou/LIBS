@@ -11,15 +11,17 @@ echo "apache server started"
 
 
 @REM start of angular project
-cd C:\Users\tjasr\Documents\GitHub\LIBS\LIBS_Front\liion
+cd C:\LIBS-FRONT\liion-master
 start ng serve
 echo "angular project started"
 
-@REM open browser
-start http://localhost:4200
+
 
 
 @REM start of controller.py
-cd C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back
-c:/Python311/python.exe controller.py 
+cd C:\LIBS\Back
+start c:\ProgramData\anaconda3\python.exe controller.py 
 echo "controller.py started"
+
+@REM open browser
+start http://localhost:4200

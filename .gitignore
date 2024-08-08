@@ -1,5 +1,5 @@
 BenchLIBS.bat
-Back/datasets/*
+Back/Model/datasets/*
 Back/pyvisa.py
 __pycache__/*
 LIBS/Back/__pycache__/*
@@ -8,3 +8,5 @@ libts_start.bat
 libts_stop.bat
 LIBS_Front/*
 Back/convert.py
+Back/Model/__pycache__/*
+Back/Communication/__pycache__/*

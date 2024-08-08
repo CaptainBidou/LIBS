@@ -1,6 +1,17 @@
 import serial
 import time
-arduino = serial.Serial(port='COM6', baudrate=115200, timeout=0.1)
+arduino = None
+
+
+try:
+	arduino = serial.Serial(port='COM6', baudrate=115200, timeout=0.1)
+except serial.serialutil.SerialException:
+	print("Arduino not connected")
+	exit()
+
+
+
+# arduino = serial.Serial(port='COM6', baudrate=115200, timeout=0.1)
 
 # arduino = serial.Serial(port='COM6', baudrate=115200, timeout=0.1) 
 def write_read(x): 
