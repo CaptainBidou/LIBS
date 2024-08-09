@@ -23,13 +23,12 @@ def write_read(x):
 def send_data(data):
 	result = write_read(data)
 	stringRes = result.decode('utf-8')
+	print(stringRes)
 	floatRes = float(stringRes)
 	return floatRes
 
 if __name__ == '__main__':
 	while True:
-		data = input("Enter data to send: ")
-		if data == 'exit':
-			break
-		else:
-			print(send_data(data))
+			send_data("5")
+			time.sleep(1)
+			
