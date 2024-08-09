@@ -72,8 +72,8 @@ def startMeasure(idTest,device,mode):
     voltPwrSupply = str(round(float(configMeasureQuery(device, "VOLT")), 3))
     ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
     sem.release() 
-    surfaceTemp = serialComm.send_data("11")
-    ambientTemp = serialComm.send_data("10")
+    surfaceTemp = serialComm.send_data("6")
+    ambientTemp = serialComm.send_data("5")
     id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, ambientTemp, surfaceTemp)
 
     if FNN == True:
