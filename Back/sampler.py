@@ -218,7 +218,10 @@ class estimator():
 
     def run(self):
         if(self.idObserver==1):
-            data = neuralNetwork.fnn.runOneStepDynamicOnline(self.volt,self.amp)
+            if CHARGE==True:
+                data = neuralNetwork.fnnCh.runOneStepDynamicOnline(self.volt,self.amp)
+            else:
+                data = neuralNetwork.fnnDch.runOneStepDynamicOnline(self.volt,self.amp)
             g = float(data[0][1])
             x = float(data[0][0])
             databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)

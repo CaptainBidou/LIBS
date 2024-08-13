@@ -402,15 +402,15 @@ class queue():
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
 
-# fnn = fnn('C:/LIBS/Back/Model/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
+fnnDch = fnn('C:/LIBS/Back/Model/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
 # fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
 
 
-# fnn = fnn("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/DYNAMIC_CHARGE_BID001_BID002_BID003_20-20-2.keras")
+fnnCh = fnn("C:/LIBS/Back/Model/FNN/DYNAMIC_CHARGE_BID001_BID002_BID003_20-20-2.keras")
 # fnn.graphDynamic("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/TestChCn/BID006_ChConst025_09062024.txt")
 
-fnn = fnn("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/DYNAMIC_CHDCH_BID001_BID002_BID003_20-20-2.keras")
-fnn.graphDynamic("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/Random/BID004_RANDCh_30052024.txt")
+# fnn = fnn("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/DYNAMIC_CHDCH_BID001_BID002_BID003_20-20-2.keras")
+# fnn.graphDynamic("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/Random/BID004_RANDCh_30052024.txt")
 
 # entree,sortie = prepareDatasetDynamic()
 # createModel(entree,sortie,100,'DYNAMIC_CHDCH_BID001_BID002_BID003_20-20-2')
