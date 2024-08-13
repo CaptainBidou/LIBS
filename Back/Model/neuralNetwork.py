@@ -59,81 +59,145 @@ def prepareDataset():
 
 
 def prepareDatasetDynamic():
-    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID001_RANDCh_29052024.txt', 'r') as file:
-        dataB1 = np.loadtxt(file, delimiter='\t', skiprows=1, usecols=(1,2), dtype=float)
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/TestChCn/BID001_ChConst025_04062024.txt', 'r') as file:
+        dataB1 = np.loadtxt(file, delimiter=';', skiprows=1, usecols=(1,2), dtype=float)
 
-    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID002_RANDCH_30052024.txt', 'r') as file:
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/TestChCn/BID002_ChConst050_04062024.txt', 'r') as file:
         dataB2 = np.loadtxt(file, delimiter=';', skiprows=1, usecols=(1,2), dtype=float)
 
-    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID003_RANDCh_30052024.txt', 'r') as file:
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/TestChCn/BID003_ChConst100_04062024.txt', 'r') as file:
         dataB3 = np.loadtxt(file, delimiter=';', skiprows=1, usecols=(1,2), dtype=float)
+
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/Random/BID001_RANDCh_29052024.txt', 'r') as file:
+        dataB1D = np.loadtxt(file, delimiter='\t', skiprows=1, usecols=(1,2), dtype=float)
+
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/Random/BID002_RANDCh_30052024.txt', 'r') as file:
+        dataB2D = np.loadtxt(file, delimiter=';', skiprows=1, usecols=(1,2), dtype=float)
+
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/Random/BID003_RANDCh_30052024.txt', 'r') as file:
+        dataB3D = np.loadtxt(file, delimiter=';', skiprows=1, usecols=(1,2), dtype=float)
 
     entreeSafe = []
         
     entree = []
     sortie = []
     entreeQueue=queue(20)
-    entree.append([dataB1[0][0],dataB1[0][1]])
-    entreeQueue.put(dataB1[0][0],dataB1[0][1])
+    entree.append([dataB1[0][0],-dataB1[0][1]])
+    entreeQueue.put(dataB1[0][0],-dataB1[0][1])
     entreeQueue.get(entreeSafe)
-    entree.append([dataB1[1][0],dataB1[1][1]])
-    entreeQueue.put(dataB1[1][0],dataB1[1][1])
+    entree.append([dataB1[1][0],-dataB1[1][1]])
+    entreeQueue.put(dataB1[1][0],-dataB1[1][1])
     entreeQueue.get(entreeSafe)
-    sortie.append([1-(dataB1[1][1]*(1/(3600*3.08))),dataB1[1][0]])
+    sortie.append([0+(dataB1[1][1]*(1/(3600*3.08))),dataB1[1][0]])
     
     for i in range(2,len(dataB1)):
-        entree.append([dataB1[i][0],dataB1[i][1]])
-        entreeQueue.put(dataB1[i][0],dataB1[i][1])
+        entree.append([dataB1[i][0],-dataB1[i][1]])
+        entreeQueue.put(dataB1[i][0],-dataB1[i][1])
         entreeQueue.get(entreeSafe)
-        sortie.append([(sortie[len(sortie)-1][0]-(dataB1[i][1]*(1/(3600*3.08)))),dataB1[i][0]])
+        sortie.append([(sortie[len(sortie)-1][0]+(dataB1[i][1]*(1/(3600*3.08)))),dataB1[i][0]])
 
     entree.pop()
     entreeSafe.pop()
     entreeQueue=queue(20)
 
-    entree.append([dataB2[0][0],dataB2[0][1]])
-    entreeQueue.put(dataB2[0][0],dataB2[0][1])
+    entree.append([dataB2[0][0],-dataB2[0][1]])
+    entreeQueue.put(dataB2[0][0],-dataB2[0][1])
     entreeQueue.get(entreeSafe)
-    entree.append([dataB2[1][0],dataB2[1][1]])
-    entreeQueue.put(dataB2[1][0],dataB2[1][1])
+    entree.append([dataB2[1][0],-dataB2[1][1]])
+    entreeQueue.put(dataB2[1][0],-dataB2[1][1])
     entreeQueue.get(entreeSafe)
-    sortie.append([1-(dataB2[1][1]*(1/(3600*3.08))),dataB2[1][0]])
+    sortie.append([0+(dataB2[1][1]*(1/(3600*3.08))),dataB2[1][0]])
     for i in range(len(dataB2)):
-        entree.append([dataB2[i][0],dataB2[i][1]])
-        entreeQueue.put(dataB2[i][0],dataB2[i][1])
+        entree.append([dataB2[i][0],-dataB2[i][1]])
+        entreeQueue.put(dataB2[i][0],-dataB2[i][1])
         entreeQueue.get(entreeSafe)
-        sortie.append([(sortie[len(sortie)-1][0]-(dataB2[i][1]*(1/(3600*3.08)))),dataB2[i][0]])
+        sortie.append([(sortie[len(sortie)-1][0]+(dataB2[i][1]*(1/(3600*3.08)))),dataB2[i][0]])
 
     entree.pop()
     entreeSafe.pop()
     entreeQueue=queue(20)
 
 
-    entree.append([dataB3[0][0],dataB3[0][1]])
-    entreeQueue.put(dataB3[0][0],dataB3[0][1])
+    entree.append([dataB3[0][0],-dataB3[0][1]])
+    entreeQueue.put(dataB3[0][0],-dataB3[0][1])
     entreeQueue.get(entreeSafe)
-    entree.append([dataB3[1][0],dataB3[1][1]])
-    entreeQueue.put(dataB3[1][0],dataB3[1][1])
+    entree.append([dataB3[1][0],-dataB3[1][1]])
+    entreeQueue.put(dataB3[1][0],-dataB3[1][1])
     entreeQueue.get(entreeSafe)
-    sortie.append([1-(dataB3[1][1]*(1/(3600*3.08))),dataB3[1][0]])
+    sortie.append([0+(dataB3[1][1]*(1/(3600*3.08))),dataB3[1][0]])
     for i in range(len(dataB3)):
-        entree.append([dataB3[i][0],dataB3[i][1]])
-        entreeQueue.put(dataB3[i][0],dataB3[i][1])
+        entree.append([dataB3[i][0],-dataB3[i][1]])
+        entreeQueue.put(dataB3[i][0],-dataB3[i][1])
         entreeQueue.get(entreeSafe)
-        sortie.append([(sortie[len(sortie)-1][0]-(dataB3[i][1]*(1/(3600*3.08)))),dataB3[i][0]])
+        sortie.append([(sortie[len(sortie)-1][0]+(dataB3[i][1]*(1/(3600*3.08)))),dataB3[i][0]])
 
     entree.pop()
     entreeSafe.pop()
 
+    entreeQueue=queue(20)
+
+
+    entree.append([dataB1D[0][0],dataB1D[0][1]])
+    entreeQueue.put(dataB1D[0][0],dataB1D[0][1])
+    entreeQueue.get(entreeSafe)
+    entree.append([dataB1D[1][0],dataB1D[1][1]])
+    entreeQueue.put(dataB1D[1][0],dataB1D[1][1])
+    entreeQueue.get(entreeSafe)
+    sortie.append([1-(dataB1D[1][1]*(1/(3600*3.08))),dataB1D[1][0]])
+    for i in range(len(dataB1D)):
+        entree.append([dataB1D[i][0],dataB1D[i][1]])
+        entreeQueue.put(dataB1D[i][0],dataB1D[i][1])
+        entreeQueue.get(entreeSafe)
+        sortie.append([(sortie[len(sortie)-1][0]-(dataB1D[i][1]*(1/(3600*3.08)))),dataB1D[i][0]])
+
+    entree.pop()
+    entreeSafe.pop()
+
+    entreeQueue=queue(20)
+
+
+    entree.append([dataB2D[0][0],dataB2D[0][1]])
+    entreeQueue.put(dataB2D[0][0],dataB2D[0][1])
+    entreeQueue.get(entreeSafe)
+    entree.append([dataB2D[1][0],dataB2D[1][1]])
+    entreeQueue.put(dataB2D[1][0],dataB2D[1][1])
+    entreeQueue.get(entreeSafe)
+    sortie.append([1-(dataB2D[1][1]*(1/(3600*3.08))),dataB2D[1][0]])
+    for i in range(len(dataB2D)):
+        entree.append([dataB2D[i][0],dataB2D[i][1]])
+        entreeQueue.put(dataB2D[i][0],dataB2D[i][1])
+        entreeQueue.get(entreeSafe)
+        sortie.append([(sortie[len(sortie)-1][0]-(dataB2D[i][1]*(1/(3600*3.08)))),dataB2D[i][0]])
+
+    entree.pop()
+    entreeSafe.pop()
+    entreeQueue=queue(20)
+
+
+    entree.append([dataB3D[0][0],dataB3D[0][1]])
+    entreeQueue.put(dataB3D[0][0],dataB3D[0][1])
+    entreeQueue.get(entreeSafe)
+    entree.append([dataB3D[1][0],dataB3D[1][1]])
+    entreeQueue.put(dataB3D[1][0],dataB3D[1][1])
+    entreeQueue.get(entreeSafe)
+    sortie.append([1-(dataB3D[1][1]*(1/(3600*3.08))),dataB3D[1][0]])
+    for i in range(len(dataB3D)):
+        entree.append([dataB3D[i][0],dataB3D[i][1]])
+        entreeQueue.put(dataB3D[i][0],dataB3D[i][1])
+        entreeQueue.get(entreeSafe)
+        sortie.append([(sortie[len(sortie)-1][0]-(dataB2D[i][1]*(1/(3600*3.08)))),dataB2D[i][0]])
+
+    entree.pop()
+    entreeSafe.pop()
     entreeSafe = np.array(entreeSafe)
     sortie = np.array(sortie)
 
     # write into a file
-    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/data_save_ENTREE.txt', 'w') as file:
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/data_save_ENTREE.txt', 'w') as file:
         for i in range(len(entreeSafe)):
             file.write(str(entreeSafe[i]))
 
-    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/data_save_SORTIE.txt', 'w') as file:
+    with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/data_save_SORTIE.txt', 'w') as file:
         for i in range(len(sortie)):
             file.write(str(sortie[i]))
 
@@ -164,7 +228,7 @@ def createModel(entree,sortie,epochs,name):
     for i in range(epochs):
         print(i)
         model.fit(entree,sortie,epochs=1)
-        model.save('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/'+name+'.keras')
+        model.save('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/'+name+'.keras')
     return model
 
 
@@ -338,13 +402,15 @@ class queue():
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
 
-#fnn = fnn('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/FNN/DYNAMIC_NOISED_BID001_BID002_BID003_20-20-2.keras')
-#fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
-
-fnn = fnn('C:/LIBS/Back/Model/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
-#fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
+# fnn = fnn('C:/LIBS/Back/Model/FNN/DYNAMIC_BID001_BID002_BID003_20-20-2.keras')
+# fnn.graphDynamic('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/Random/BID004_RANDCh_30052024.txt')
 
 
+# fnn = fnn("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/DYNAMIC_CHARGE_BID001_BID002_BID003_20-20-2.keras")
+# fnn.graphDynamic("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/TestChCn/BID006_ChConst025_09062024.txt")
 
-# entree,sortie = prepareDatasetDynamicNoised()
-# createModel(entree,sortie,100,'DYNAMIC_NOISED_BID001_BID002_BID003_20-20-2')
+fnn = fnn("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/DYNAMIC_CHDCH_BID001_BID002_BID003_20-20-2.keras")
+fnn.graphDynamic("C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/datasets/Random/BID004_RANDCh_30052024.txt")
+
+# entree,sortie = prepareDatasetDynamic()
+# createModel(entree,sortie,100,'DYNAMIC_CHDCH_BID001_BID002_BID003_20-20-2')
