@@ -37,7 +37,7 @@ mycursor = mydb.cursor()
 #creating the table
 if (databaseBool == False):
     mycursor.execute("CREATE TABLE cells (id integer PRIMARY KEY AUTO_INCREMENT, name varchar(255) UNIQUE)")
-    mycursor.execute("CREATE TABLE actions (id integer PRIMARY KEY AUTO_INCREMENT, name varchar(255) UNIQUE)")
+    mycursor.execute("CREATE TABLE actions (id integer PRIMARY KEY AUTO_INCREMENT, name varchar(255) UNIQUE, brief varchar(50))")
     mycursor.execute(
         "CREATE TABLE tests (id integer PRIMARY KEY AUTO_INCREMENT, time timestamp, id_action integer, comment varchar(255),c_rate integer)")
     mycursor.execute(
