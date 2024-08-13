@@ -1,12 +1,12 @@
 // get analog value from A0 pin and convert it to temperature ( LM35DZ )
 // get value of A1 pin and convert it to temperature, tension divider ( 100k and 100k ) (NTC 100k)
 
-
+#include <math.h>
 
 const int ambientSensor = A0;  // Analog input pin that the LM35DZ is attached to
 const int surfaceSensor = A1;  // Analog input pin that the NTC 100k is attached to
 float ambientTemperature = 0;     // value read from the LM35DZ
-float surfaceTemperature = 0; // value read from the NTC 10k
+double surfaceTemperature = 0; // value read from the NTC 10k
 
 float ADC_coef = 204.6;//number/V    
 
@@ -87,24 +87,22 @@ void loop() {
       Serial.print(RelayControl4State); 
       break;
     case 5:{
-      float adc_val = analogRead(ambientSensor);//get the adc value
+      int adc_val = analogRead(ambientSensor);//get the adc value
       float volt = adc_val/ADC_coef;//convert the adc into voltage
       highFrequencyFilter(volt);
-      ambientTemperature=volt*100;//convert the voltage into temperature
+      ambientTemperature=volt*100-10;//convert the voltage into temperature
       Serial.print(ambientTemperature);
       break;
 
     }
     case 6:{
-      float temp = analogRead(surfaceSensor);//get the adc value
-
+      int temp = analogRead(surfaceSensor);//get the adc value
       float volt2 = temp / ADC_coef;//convert the adc into voltage
-
-      float resistor = (volt2*10*10*10*10)/(5-volt2);//convert the voltage into resistor
-
-      float logarithm = (25*log(resistor/(10*10*10*10)))+3380000;//compute the denominator value
-      surfaceTemperature = (25*3380000)/(logarithm);//compute the temperature value
-      Serial.print(surfaceTemperature);
+      float resistor = (volt2*10000)/(5-volt2);//convert the voltage into resistor
+      double functLog=log(resistor/10000);
+      double logarithm = double((25+273.5)*functLog+3380);//compute the denominator value
+      surfaceTemperature = float((float(3380))/(logarithm));//compute the temperature value
+      Serial.print(((25+273.5)*surfaceTemperature)-273.5);
       break;
     }
   }
