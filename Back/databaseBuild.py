@@ -316,7 +316,7 @@ def getTest(id_test):
         cur.execute("SELECT * FROM observers WHERE id = %s", (ob[1],))
         observersTab.append(cur.fetchall()[0])
     
-    test = {"id":test[0], "time":str(test[1]), "action":{"id_action":action[0],"name":action[1]},
+    test = {"id":test[0], "time":str(test[1]), "action":{"id_action":action[0],"name":action[1],"brief":action[2]},
              "comment":test[3], "cells":cellsTab, "cRate":test[4],
              "observers":observersTab}
     return test
