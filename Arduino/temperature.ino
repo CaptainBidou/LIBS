@@ -15,18 +15,14 @@ float ADC_coef = 204.6;//number/V
 int mes;
 
 //the relays connect to
-int RelayControl1 = 2; // Digital Arduino Pin used to control the motor
+int RelayControl1 = 5; // Digital Arduino Pin used to control the motor
 int RelayControl2 = 3;
 int RelayControl3 = 4;
-int RelayControl4 = 5;
+int RelayControl4 = 2;
 bool RelayControl1State = LOW;
 bool RelayControl2State = LOW;
 bool RelayControl3State = LOW;
 bool RelayControl4State = LOW;
-
-int alpha = 2*2*3.14159265359;
-char*y;
-float x;
 
 
 
@@ -44,18 +40,6 @@ void setup() {
     digitalWrite(RelayControl4,RelayControl4State);
     Serial.begin(115200); 
 	  Serial.setTimeout(1);
-    y=malloc(2*sizeof(float));
-    y[0]=0.36;
-}
-
-float highFrequencyFilter(float enter){
-
-  y[1]=y[0];
-
-  y[0]= alpha*x+(1-alpha)*y[1];
-
-  return y[0];
-
 }
 
 
@@ -87,18 +71,20 @@ void loop() {
       Serial.print(RelayControl4State); 
       break;
     case 5:{
-      int adc_val = analogRead(ambientSensor);//get the adc value
-      float volt = adc_val/ADC_coef;//convert the adc into voltage
-      highFrequencyFilter(volt);
-      ambientTemperature=volt*100-10;//convert the voltage into temperature
-      Serial.print(ambientTemperature);
+      int temp = analogRead(ambientSensor);//get the adc value
+      float volt = temp / ADC_coef;//convert the adc into voltage
+      float resistor = (volt*10000)/(5-volt);//convert the voltage into resistor
+      double functLog=log(resistor/10000);
+      double logarithm = double((25+273.5)*functLog+3380);//compute the denominator value
+      ambientTemperature = float((float(3380))/(logarithm));//compute the temperature value
+      Serial.print(((25+273.5)*ambientTemperature)-273.5);
       break;
 
     }
     case 6:{
       int temp = analogRead(surfaceSensor);//get the adc value
-      float volt2 = temp / ADC_coef;//convert the adc into voltage
-      float resistor = (volt2*10000)/(5-volt2);//convert the voltage into resistor
+      float volt = temp / ADC_coef;//convert the adc into voltage
+      float resistor = (volt*10000)/(5-volt);//convert the voltage into resistor
       double functLog=log(resistor/10000);
       double logarithm = double((25+273.5)*functLog+3380);//compute the denominator value
       surfaceTemperature = float((float(3380))/(logarithm));//compute the temperature value
