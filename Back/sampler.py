@@ -27,7 +27,7 @@ OBSERVER = False
 EKF = False
 FNN = False
 CHARGE = False
-
+CELLS = []
 
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
@@ -72,9 +72,10 @@ def startMeasure(idTest,device,mode):
     voltPwrSupply = str(round(float(configMeasureQuery(device, "VOLT")), 3))
     ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
     sem.release() 
-    surfaceTemp = serialComm.send_data("6")
+    surfaceTempPlus = serialComm.send_data("6")
+    surfaceTempMinus = serialComm.send_data("7")
     ambientTemp = serialComm.send_data("5")
-    id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, ambientTemp, surfaceTemp)
+    id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, ambientTemp, surfaceTempPlus, surfaceTempMinus)
 
     if FNN == True:
         threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,1,))
@@ -89,6 +90,10 @@ def startMeasure(idTest,device,mode):
         else:
             threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,4,))
             threadEstimation.start()
+    global CELLS
+    for cell in CELLS:
+        threadSOC = Thread(target=socThread, args=(cell,float(ampePwrSupply),))
+        threadSOC.start()
     exit()
     
 def startProfilePS(value,device):
@@ -146,7 +151,7 @@ class MeasuringDevice():
 ########################################################################
 
 class Cell():
-    def __init__(self):
+    def __init__(self,id=0,soc=0):
         # LIB: NCR18650BD
         self.Qn = 3.08  #Rated capacity
         self.Vn = 3.6  #Nominal voltage
@@ -156,6 +161,11 @@ class Cell():
         self.QcompEL = 0  #Capacity computed to discharge
         self.QcompPSEL = 0.35 * 2.9
         self.Icut = self.Qn / 50  #Cut off current
+        self.soc = soc  #State of charge
+        self.id = id
+
+    def setSOC(self, soc):
+        self.soc = soc
 
 ########################################################################
 
@@ -196,12 +206,6 @@ class Counter():
             sem.acquire()
             threading.Timer(0.0,startMeasure,(self.idTest, self.device,self.mode,)).start()
             time.sleep(self.increment)
-        
-        #threadCounter = Thread(target=startMeasure, args=(self.idTest, self.device,self.mode,))
-        #threadCounter.start()
-        #startMeasure(self.idTest, self.device,self.mode)
-        #    threading.Timer(self.next_t - time.time(), self._run).start()
-            
 
     def stop(self):
         self.done = True
@@ -238,6 +242,20 @@ class estimator():
             g = float(data[1])
             databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
             pass
+        exit()
+
+class socThread():
+    def __init__(self,cell,current):
+        self.cell = cell
+        self.current = current
+        self.run()
+    def run(self):
+        
+        if CHARGE == True:
+            self.cell.soc = self.cell.soc + self.current/(self.cell.Qn*3600)
+        else:
+            self.cell.soc = self.cell.soc - self.current/(self.cell.Qn*3600)
+        databaseBuild.updateSOC(self.cell.id,self.cell.soc)
         exit()
         
 ########################################################################
@@ -478,19 +496,29 @@ def startTestCharge(idTest,cRate):
                 exit()
             time.sleep(SAMPLING_RATE)
         #we wait the time
-        
+
 
 def setTest(idTest,observer):
     result=databaseBuild.getTest(idTest)
     print("result : " + str(result))
     crate = result["cRate"]
     observers = result["observers"]
+    cells = result["cells"]
     result = result["action"]["id_action"]
+
+    global CELLS
+    for cell in cells:
+        newCell = Cell(cell[0],cell[2])
+        CELLS.append(newCell)
+    
+
     
     global IDTEST
     global FNN
     global EKF
     global OBSERVER
+    global CHARGE
+    CHARGE = False
     IDTEST=idTest
     for obs in observers:
         if obs[0]==1:
@@ -505,10 +533,17 @@ def setTest(idTest,observer):
             OBSERVER=True
             FNN = False
             EKF = False
+    if result==2 or result==3 or result ==4 or result==5 or result==6:
+        for cell in CELLS:
+            if(cell.soc==None):
+                cell.setSOC(1)
+
 
     if result==1:
-        global CHARGE
         CHARGE = True
+        for cell in CELLS:
+            if(cell.soc==None):
+                cell.setSOC(0)
         startTestCharge(idTest,crate)
     elif result==2:
         profile = RandomProfile()

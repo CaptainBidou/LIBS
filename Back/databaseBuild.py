@@ -123,13 +123,13 @@ def createTest(id_action, comment, id_cells,crate,id_obs):
     return id_test
 
 
-def createMeasure(id_test,time_test, current, output_voltage, ambient_temperature, surface_temperature):
+def createMeasure(id_test,time_test, current, output_voltage, ambient_temperature, surface_temperature_plus,surface_temperature_minus):
     mydbVar=startConn()
     mydbCurs = mydbVar.cursor()
     time_test = time.strftime('%Y-%m-%d %H:%M:%S')
-    sql = "INSERT INTO measures (id_test, time, current, output_voltage, ambient_temperature, surface_temperature) VALUES (%s, %s, %s, %s, %s, %s)"
+    sql = "INSERT INTO measures (id_test, time, current, output_voltage, ambient_temperature, surface_temperature_plus,surface_temperature_minus) VALUES (%s, %s, %s, %s, %s, %s, %s)"
     val = (
-    id_test, time_test, current, output_voltage, ambient_temperature, surface_temperature)
+    id_test, time_test, current, output_voltage, ambient_temperature, surface_temperature_plus,surface_temperature_minus)
     mydbCurs.execute(sql, val)
     mydbVar.commit()
     #mydbCurs.lastrowid
@@ -210,7 +210,7 @@ def getMeasures(id_test, id_last_measure):
 
         
         tab = json.dumps({'id':listCopy[0],'id_test':listCopy[1],'time':str(listCopy[2]),'current':listCopy[3],
-                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature':listCopy[6],'estimator_surface_temperature':obsCopy[0][5],'estimator_core_temperature':obsCopy[0][6]
+                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature_plus':listCopy[6],'surface_temperature_minus':listCopy[7],'estimator_surface_temperature':obsCopy[0][5],'estimator_core_temperature':obsCopy[0][6]
                           ,'estimator_voltage':obsCopy[0][7],'estimator_soc':obsCopy[0][8]})
         cpyMes.append(tab)
 
@@ -386,5 +386,33 @@ def getAccuracy():
     sql = "SELECT soc FROM measures"
 
 
-# importDataset(1, "comment",0.25, [1,2,3], 'C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/TestChCn/BID002_ChConst050_04062024.txt', ';')
+def updateSOC(id,soc):
+    
+    con = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="LIBS")
+    cur = con.cursor()
+    cur.execute("UPDATE cells SET soc = %s WHERE id = %s", (soc, id,))
+    con.commit()
+    con.close()
+    return
 
+def getSOC(id):
+    mycursor.execute("SELECT soc FROM cells WHERE id = %s",(id,))
+    soc = mycursor.fetchall()
+    return soc
+
+
+
+def createSohMeasure(idTest,voc,r0,soc):
+    con = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="LIBS")
+    cur = con.cursor()
+    sql = "INSERT INTO measures_soh (id_test, voc, r0, soc) VALUES (%s, %s, %s, %s)"
+    val = (idTest, voc, r0, soc)
+    cur.execute(sql, val)
