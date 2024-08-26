@@ -47,7 +47,6 @@ sem = threading.BoundedSemaphore(1)
 ##            F U N C T I O N    D E C L A R A T I O N           ##
 ###################################################################
 def calculIt(value):
-    print("Value c-rate"+str(value))
     return float(value)*cell.Qn/100
 
 def calculImax(It):
@@ -58,7 +57,6 @@ def calculQtype(It):
 
 def initDevice(device):
     rm = visa.ResourceManager()
-    print(rm.list_resources())
     device.pwrSupply = rm.open_resource(POWER_SUPPLY)
     device.electLoad = rm.open_resource(ELECTRONIC_LOAD)
     device.pwrSupply_info = device.pwrSupply.query('*IDN?')
@@ -97,7 +95,6 @@ def startMeasure(idTest,device,mode):
     exit()
     
 def startProfilePS(value,device):
-    print(calculIt(value))
     device.write("SOUR:VOLTage:LEVel " + str(cell.Vmax))
     device.write("SOUR:CURRent:LEVel " + str(calculIt(value)))
 
@@ -108,7 +105,7 @@ def startProfileEL(It,Imax,device):
     device.write("SOUR:CURR:SLEW 0.01")
     device.write("SOUR:CURR:VON " + str(cell.Vmin))
     device.write("SOUR:CURR:VLIM " + str(cell.Vmax))
-    device.write("SOUR:CURR:ILIM 5")
+    device.write("SOUR:CURR:ILIM 7.5")
 
 def configMeasureQuery(device, measure):
         if (measure == "VOLT"):
@@ -120,6 +117,7 @@ def output(output,device,deviceType):
         device.write('OUTPut:STATe ' + str(output))
     if(deviceType == "EL"):
         device.write('INPut:STATe ' + str(output))
+    return
 
 def configPSStatusQuery(device):
     return device.query('STATus:QUEStionable:CONDition?')
@@ -228,19 +226,19 @@ class estimator():
                 data = neuralNetwork.fnnDch.runOneStepDynamicOnline(self.volt,self.amp)
             g = float(data[0][1])
             x = float(data[0][0])
-            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
+            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,g,x)
             pass
         if(self.idObserver==3):
             data = ExtendedKalmanFilter.ekf.runOneStepOnline(self.volt,self.amp,CHARGE)
             x = float(data[0][2][0])
             g = float(data[1][0])
-            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
+            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,g,x)
             pass
         if(self.idObserver==4):
             data = stateObserver.observer.nextStep(self.volt,self.amp)
             x = float(data[0])
             g = float(data[1])
-            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,0,0,g,x)
+            databaseBuild.createMeasureObserver(self.idMeasure,self.idObserver,0,0,g,x)
             pass
         exit()
 
@@ -255,9 +253,45 @@ class socThread():
             self.cell.soc = self.cell.soc + self.current/(self.cell.Qn*3600)
         else:
             self.cell.soc = self.cell.soc - self.current/(self.cell.Qn*3600)
+            
         databaseBuild.updateSOC(self.cell.id,self.cell.soc)
         exit()
-        
+
+
+class sohRoutine():
+    def __init__(self,funct,dev):
+        global CELLS
+        self.cell = CELLS[0] #to change when we have multiple cells
+        self.funct = funct
+        self.device = dev
+        self.aCurrent = 0
+        self.bCurrent = 0
+        self.aVoltage = 0
+        self.bVoltage = 0
+        self.voc=None
+        self.r0 =0
+        self.run()
+    def run(self):
+        self.aVoltage = float(configMeasureQuery(self.device, "VOLT"))
+        self.aCurrent = float(configMeasureQuery(self.device, "CURR"))
+        self.funct()
+        self.bVoltage = float(configMeasureQuery(self.device, "VOLT"))
+        self.bCurrent = float(configMeasureQuery(self.device, "CURR"))
+        while(round(self.bCurrent,1) == round(self.aCurrent,1) or round(self.bVoltage,2) == round(self.aVoltage,2)):
+            self.bCurrent = float(configMeasureQuery(self.device, "CURR"))
+            self.bVoltage = float(configMeasureQuery(self.device, "VOLT"))
+            time.sleep(0.01)
+        self.r0 = abs(self.aVoltage-self.bVoltage)/abs(self.aCurrent-self.bCurrent)
+        if(self.aVoltage>self.bVoltage):
+            self.voc=self.aVoltage
+
+        dataSend = Thread(target = databaseBuild.createSohMeasure, args=(IDTEST,self.cell.id,self.voc,self.r0,self.cell.soc,))
+        dataSend.start()
+        return
+
+
+
+
 ########################################################################
 class HppcProfile():
     def __init__(self):
@@ -405,15 +439,9 @@ def startTestDischarge(profile,idTest):
         sem.acquire()
         startTime = time.time()
         startProfileEL(profile.getAmpl()*cell.Qn, 5, devices.electLoad)
-        
-        #configELWrite(devices.electLoad)
-        #configELModeQuery(devices.electLoad)
         timePulsing = profile.getTimePulsing()
-        print(timePulsing)
-        # config the ouput
-        #time.sleep(1)
-        output(1, devices.electLoad, "EL")
-
+        routine = sohRoutine(lambda:output(1, devices.electLoad, "EL"),devices.electLoad)
+        #output(1, devices.electLoad, "EL")
         sem.release()
         while (time.time() - startTime < timePulsing):
             print("timePulsing")
@@ -432,8 +460,8 @@ def startTestDischarge(profile,idTest):
                 
                 #print("We turn off everything before leaving")
                 sem.acquire()
-                
-                output(0, devices.electLoad, "EL")
+                routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+                #output(0, devices.electLoad, "EL")
                 sem.release()
                 
                 sendMessage.sendMessage("Test is over")
@@ -441,13 +469,13 @@ def startTestDischarge(profile,idTest):
             time.sleep(SAMPLING_RATE)
 
         timeResting = profile.getTimeResting()
-        print(timeResting)
         # config the ouput
         startTime = time.time()
         
         if(time.time() - startTime < timeResting):#it's always true but not for the DST profile ( check the trick )
             sem.acquire()
-            output(0, devices.electLoad, "EL")
+            routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+            #output(0, devices.electLoad, "EL")
             sem.release()
         
         while (time.time() - startTime < timeResting):
@@ -472,7 +500,8 @@ def startTestCharge(idTest,cRate):
     startProfilePS(cccvProfile.getAmpl(),devices.pwrSupply)
     timePulsing = cccvProfile.getTimePulsing()
     timeResting = cccvProfile.getTimeResting()
-    output(1,devices.pwrSupply,"PS")
+    routine = sohRoutine(lambda:output(1, devices.pwrSupply, "PS"),devices.pwrSupply)
+    #output(1,devices.pwrSupply,"PS")
     sem.release()
     while (True):
         while(time.time() - startTime < timePulsing):
@@ -488,7 +517,8 @@ def startTestCharge(idTest,cRate):
             sem.release()
             if(float(current)<=cell.Icut):
                 sem.acquire()
-                output(0, devices.pwrSupply, "PS")
+                routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+                #output(0, devices.pwrSupply, "PS")
                 global killThread
                 killThread = True
                 sem.release()
@@ -500,7 +530,6 @@ def startTestCharge(idTest,cRate):
 
 def setTest(idTest,observer):
     result=databaseBuild.getTest(idTest)
-    print("result : " + str(result))
     crate = result["cRate"]
     observers = result["observers"]
     cells = result["cells"]
@@ -550,7 +579,6 @@ def setTest(idTest,observer):
         startTestDischarge(profile,idTest)
     elif result==3:
         profile = PulseProfile()
-        print(crate)
         profile.setAmpl(crate)
         startTestDischarge(profile,idTest)
     elif result==4:

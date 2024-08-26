@@ -128,8 +128,7 @@ def createMeasure(id_test,time_test, current, output_voltage, ambient_temperatur
     mydbCurs = mydbVar.cursor()
     time_test = time.strftime('%Y-%m-%d %H:%M:%S')
     sql = "INSERT INTO measures (id_test, time, current, output_voltage, ambient_temperature, surface_temperature_plus,surface_temperature_minus) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-    val = (
-    id_test, time_test, current, output_voltage, ambient_temperature, surface_temperature_plus,surface_temperature_minus)
+    val = (id_test, time_test, current, output_voltage, ambient_temperature, surface_temperature_plus,surface_temperature_minus)
     mydbCurs.execute(sql, val)
     mydbVar.commit()
     #mydbCurs.lastrowid
@@ -138,12 +137,12 @@ def createMeasure(id_test,time_test, current, output_voltage, ambient_temperatur
     return mydbCurs.lastrowid
 
 
-def createMeasureObserver(id_measure, id_observer, v1_hat, v2_hat, surface_temperature, core_temperature,
+def createMeasureObserver(id_measure, id_observer,surface_temperature, core_temperature,
                           output_voltage, soc):
     mydbVar=startConn()
     mydbCurs = mydbVar.cursor()
-    sql = "INSERT INTO measures_observers (id_measure, id_observer, v1_hat, v2_hat, surface_temperature, core_temperature, output_voltage, soc) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    val = (id_measure, id_observer, v1_hat, v2_hat, surface_temperature, core_temperature, output_voltage, soc)
+    sql = "INSERT INTO measures_observers (id_measure, id_observer, surface_temperature, core_temperature, output_voltage, soc) VALUES (%s, %s, %s, %s, %s, %s)"
+    val = (id_measure, id_observer, surface_temperature, core_temperature, output_voltage, soc)
     mydbCurs.execute(sql, val)
     mydbVar.commit()
     mydbCurs.close()
@@ -210,8 +209,8 @@ def getMeasures(id_test, id_last_measure):
 
         
         tab = json.dumps({'id':listCopy[0],'id_test':listCopy[1],'time':str(listCopy[2]),'current':listCopy[3],
-                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature_plus':listCopy[6],'surface_temperature_minus':listCopy[7],'estimator_surface_temperature':obsCopy[0][5],'estimator_core_temperature':obsCopy[0][6]
-                          ,'estimator_voltage':obsCopy[0][7],'estimator_soc':obsCopy[0][8]})
+                          'output_voltage':listCopy[4],'ambient_temperature':listCopy[5],'surface_temperature_plus':listCopy[6],'surface_temperature_minus':listCopy[7],'estimator_surface_temperature':obsCopy[0][3],'estimator_core_temperature':obsCopy[0][4]
+                          ,'estimator_voltage':obsCopy[0][5],'estimator_soc':obsCopy[0][6]})
         cpyMes.append(tab)
 
 
@@ -406,13 +405,16 @@ def getSOC(id):
 
 
 
-def createSohMeasure(idTest,voc,r0,soc):
+def createSohMeasure(idTest,idCell,voc,r0,soc):
     con = mysql.connector.connect(
     host="localhost",
     user="root",
     password="",
     database="LIBS")
     cur = con.cursor()
-    sql = "INSERT INTO measures_soh (id_test, voc, r0, soc) VALUES (%s, %s, %s, %s)"
-    val = (idTest, voc, r0, soc)
+    sql = "INSERT INTO measures_soh (id_test,id_cell, voc, r0, soc,time) VALUES (%s, %s, %s, %s, %s, %s)"
+    val = (idTest,idCell, voc, r0, soc, time.strftime('%Y-%m-%d %H:%M:%S'))
     cur.execute(sql, val)
+    con.commit()
+    con.close()
+    return

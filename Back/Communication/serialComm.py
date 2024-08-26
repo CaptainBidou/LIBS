@@ -23,7 +23,7 @@ def write_read(x):
 def send_data(data):
 	result = write_read(data)
 	stringRes = result.decode('utf-8')
-	print(stringRes)
+	# print(stringRes)
 	floatRes = float(stringRes)
 	return floatRes
 
