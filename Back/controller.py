@@ -77,7 +77,13 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         response = None
 
-        if id == 1:
+        if id == 0:
+            # Get the current / voltage going to be applied 
+            # data = {‘id_test’:}
+            # dataRepsonse = {‘Current’:,’Voltage’:}
+            response = sampler.getVoltageCurrent(data["id_test"])
+            pass             
+        elif id == 1:
             # Get the actions from the database
             # data = {}
             # dataRepsonse = [{‘id’:,’Name’:}]
@@ -142,10 +148,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             pass
 
         elif id ==9:
-            #get the accuracy of each observer
-            data = {'useless':'useless'}
-            response = databaseBuild.getAccuracy()
-
+            #get the voc and r0
+            #data = {'id_test':id,'id_last_measure':id}
+            response = databaseBuild.get_R0()
+            pass
         elif id == 10:
             # Create a test
             # data = {'id_action':,'comment':,cells:[]}
@@ -172,9 +178,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # dataRepsonse = boolean
             # sampler.interrupt.stop()
             sampler.killThread = True
-            thread2 = Thread(target=sampler.exitProg)
-            thread2.start()
-            thread2.join()
+            # thread2 = Thread(target=sampler.exitProg)
+            # thread2.start()
+            # thread2.join()
             response = True
             pass
 

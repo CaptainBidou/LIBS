@@ -28,6 +28,7 @@ EKF = False
 FNN = False
 CHARGE = False
 CELLS = []
+SEED = 0
 
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
@@ -472,16 +473,16 @@ def startTestDischarge(profile,idTest):
             voltage = str(round(float(voltage), 3))
             global killThread
             if(float(voltage) <= cell.Vmin or killThread):
-                killThread = True
-               # print("Voltage is too low")
+                # killThread = True
+                # print("Voltage is too low")
                 
                 #print("We turn off everything before leaving")
                 sem.acquire()
                 routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
                 #output(0, devices.electLoad, "EL")
-                sem.release()
-                
+                print("We turn off everything before leaving")
                 sendMessage.sendMessage("Test is over")
+                sem.release()
                 exit()
             time.sleep(SAMPLING_RATE)
 
@@ -503,6 +504,40 @@ def startTestDischarge(profile,idTest):
             #we wait the time
             time.sleep(SAMPLING_RATE)
 
+def getVoltageCurrent(idTest):
+    result=databaseBuild.getTest(idTest)
+    crate = result["cRate"]
+    result = result["action"]["id_action"]
+    profile = None
+    if result==1:
+        profile = CCCVProfile()
+        profile.setAmpl(crate)
+        return {"Current": calculIt(profile.getAmpl()), "Voltage": configMeasureQuery(devices.pwrSupply, "VOLT")}
+    elif result==2:
+        profile = RandomProfile()
+    elif result==3:
+        profile = PulseProfile()
+        profile.setAmpl(crate)
+    elif result==4:
+        profile = HppcProfile()
+    elif result==5:
+        profile=ConstantProfile()
+        profile.setAmpl(crate)
+    elif result==6:
+        profile=DSTProfile()
+    elif result==7:
+        profile=RDSTProfile()
+    
+    global SEED
+    SEED = random.randint(0, 100)
+    random.seed(SEED)
+
+    voltage = configMeasureQuery(devices.electLoad, "VOLT")
+    voltage = round(float(voltage), 3)
+    current = profile.getAmpl()*cell.Qn
+    current = round(float(current), 3)
+    
+    return {"Current": current, "Voltage": voltage}    
 
 
 def startTestCharge(idTest,cRate):
@@ -558,7 +593,8 @@ def setTest(idTest,observer):
         CELLS.append(newCell)
     
 
-    
+
+    global SEED
     global IDTEST
     global FNN
     global EKF
@@ -584,6 +620,7 @@ def setTest(idTest,observer):
             if(cell.soc==None):
                 cell.setSOC(1)
 
+    random.seed(SEED)
 
     if result==1:
         CHARGE = True

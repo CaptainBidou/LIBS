@@ -292,16 +292,16 @@ def getTest(id_test):
     cur.execute("SELECT * FROM tests WHERE id = %s", (id_test,))
     test = cur.fetchall()
     test = test[0]
-    print(test)
+    #print(test)
     cur.execute("SELECT * FROM actions WHERE id = %s", (test[2],))
     action = cur.fetchall()
     action = action[0]
-    print(action)
+    #print(action)
 
     cur.execute("SELECT * FROM cells_relations WHERE id_test = %s", (id_test,))
     cells = cur.fetchall()
     cellsTab = []
-    print(cells)
+    #print(cells)
 
     for cell in cells:
         cur.execute("SELECT * FROM cells WHERE id = %s", (cell[1],))
@@ -325,8 +325,11 @@ def getDataset(idTest):
     time = []
     voltage = []
     current = []
+    ambient_temperature = []
+    surface_temperature_plus = []
+    surface_temperature_moins = []
     # get the data of the test idTest
-    mycursor.execute("SELECT output_voltage,current FROM measures WHERE id_test = %s ORDER BY ID ASC", (idTest,))
+    mycursor.execute("SELECT output_voltage,current,ambient_temperature,surface_temperature_plus,surface_temperature_minus FROM measures WHERE id_test = %s ORDER BY ID ASC", (idTest,))
     measures = mycursor.fetchall()
     compteur = 0
     for measure in measures:
@@ -334,7 +337,11 @@ def getDataset(idTest):
         compteur += 1
         voltage.append(measure[0])
         current.append(measure[1])
-    return [time, voltage, current]
+        ambient_temperature.append(measure[2])
+        surface_temperature_plus.append(measure[3])
+        surface_temperature_moins.append(measure[4])
+
+    return [time, voltage, current, ambient_temperature, surface_temperature_plus, surface_temperature_moins]
 
 
 def exportDataset(idTest):
@@ -346,7 +353,7 @@ def exportDataset(idTest):
     blob = ""
     data = getDataset(idTest)
     for i in range(len(data[0])):
-        blob += str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+'\n'
+        blob += str(data[0][i])+';'+str(data[1][i])+';'+str(data[2][i])+';'+str(data[3][i])+';'+str(data[4][i])+';'+str(data[5][i])+'\n'
 
     # with open('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/datasets/'+str(idTest)+'.txt', 'w') as file:
     #     for i in range(len(data[0])):
@@ -418,3 +425,16 @@ def createSohMeasure(idTest,idCell,voc,r0,soc):
     con.commit()
     con.close()
     return
+
+def get_R0():
+    con = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="LIBS")
+    cur = con.cursor()
+    sql = "SELECT id_cell as id,AVG(R0) as avg ,MAX(R0) as max,MIN(R0) as min FROM measures_soh group by id_cell"
+    cur.execute(sql)
+    res = cur.fetchall()
+    con.close()
+    return res
