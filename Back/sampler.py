@@ -43,7 +43,7 @@ constantProfile = None
 cccvProfile = None
 startTime = 0
 killThread = False
-sem = threading.BoundedSemaphore(1)
+semVISA = threading.BoundedSemaphore(1)
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
 ###################################################################
@@ -70,10 +70,10 @@ def startMeasure(idTest,device,mode):
     
     voltPwrSupply = str(round(float(configMeasureQuery(device, "VOLT")), 3))
     ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
-    sem.release() 
-    surfaceTempPlus = serialComm.send_data("6")
-    surfaceTempMinus = serialComm.send_data("7")
-    ambientTemp = serialComm.send_data("5")
+    semVISA.release() 
+    surfaceTempPlus = serialComm.send_data("surfaceTemperaturePlus?\n")
+    surfaceTempMinus = serialComm.send_data("surfaceTemperatureMinus?\n")
+    ambientTemp = serialComm.send_data("ambientTemperature?\n")
     id=databaseBuild.createMeasure(idTest, time.time(), ampePwrSupply, voltPwrSupply, ambientTemp, surfaceTempPlus, surfaceTempMinus)
 
     if FNN == True:
@@ -202,7 +202,7 @@ class Counter():
         
         while not self.done and not killThread :
         
-            sem.acquire()
+            semVISA.acquire()
             threading.Timer(0.0,startMeasure,(self.idTest, self.device,self.mode,)).start()
             time.sleep(self.increment)
 
@@ -454,21 +454,21 @@ def startTestDischarge(profile,idTest):
     #interrupt = Counter(SAMPLING_RATE,idTest,devices.electLoad,"EL")
     while (True):
         
-        sem.acquire()
+        semVISA.acquire()
         startTime = time.time()
         startProfileEL(profile.getAmpl()*cell.Qn, 5, devices.electLoad)
         timePulsing = profile.getTimePulsing()
         routine = sohRoutine(lambda:output(1, devices.electLoad, "EL"),devices.electLoad)
         #output(1, devices.electLoad, "EL")
-        sem.release()
+        semVISA.release()
         while (time.time() - startTime < timePulsing):
             print("timePulsing")
             #we wait the time
             
-            sem.acquire()
+            semVISA.acquire()
             
             voltage = configMeasureQuery(devices.electLoad, "VOLT")
-            sem.release()
+            semVISA.release()
             
             voltage = str(round(float(voltage), 3))
             global killThread
@@ -477,12 +477,12 @@ def startTestDischarge(profile,idTest):
                 # print("Voltage is too low")
                 
                 #print("We turn off everything before leaving")
-                sem.acquire()
+                semVISA.acquire()
                 routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
                 #output(0, devices.electLoad, "EL")
                 print("We turn off everything before leaving")
                 sendMessage.sendMessage("Test is over")
-                sem.release()
+                semVISA.release()
                 exit()
             time.sleep(SAMPLING_RATE)
 
@@ -491,10 +491,10 @@ def startTestDischarge(profile,idTest):
         startTime = time.time()
         
         if(time.time() - startTime < timeResting):#it's always true but not for the DST profile ( check the trick )
-            sem.acquire()
+            semVISA.acquire()
             routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
             #output(0, devices.electLoad, "EL")
-            sem.release()
+            semVISA.release()
         
         while (time.time() - startTime < timeResting):
             print("timeResting")
@@ -512,7 +512,11 @@ def getVoltageCurrent(idTest):
     if result==1:
         profile = CCCVProfile()
         profile.setAmpl(crate)
-        return {"Current": calculIt(profile.getAmpl()), "Voltage": configMeasureQuery(devices.pwrSupply, "VOLT")}
+        serialComm.send_data("relay2=off\n")
+        serialComm.send_data("relay1=on\n")
+        voltage =  configMeasureQuery(devices.pwrSupply, "VOLT")
+        serialComm.send_data("relay1=off\n")
+        return {"Current": calculIt(profile.getAmpl()), "Voltage": voltage }
     elif result==2:
         profile = RandomProfile()
     elif result==3:
@@ -531,8 +535,11 @@ def getVoltageCurrent(idTest):
     global SEED
     SEED = random.randint(0, 100)
     random.seed(SEED)
-
+    serialComm.send_data("relay1=off\n")
+    serialComm.send_data("relay2=on\n") 
     voltage = configMeasureQuery(devices.electLoad, "VOLT")
+    serialComm.send_data("relay2=off\n")
+
     voltage = round(float(voltage), 3)
     current = profile.getAmpl()*cell.Qn
     current = round(float(current), 3)
@@ -546,7 +553,7 @@ def startTestCharge(idTest,cRate):
     cccvProfile.setAmpl(cRate)
     interrupt = Thread(target=Counter, args=(SAMPLING_RATE,idTest,devices.pwrSupply,"PS",))
     interrupt.start()
-    sem.acquire()
+    semVISA.acquire()
     startTime = time.time()
         
     startProfilePS(cccvProfile.getAmpl(),devices.pwrSupply)
@@ -554,26 +561,25 @@ def startTestCharge(idTest,cRate):
     timeResting = cccvProfile.getTimeResting()
     routine = sohRoutine(lambda:output(1, devices.pwrSupply, "PS"),devices.pwrSupply)
     #output(1,devices.pwrSupply,"PS")
-    sem.release()
+    semVISA.release()
     while (True):
         while(time.time() - startTime < timePulsing):
-            sem.acquire()
+            semVISA.acquire()
             output(1,devices.pwrSupply,"PS")
-            sem.release()
+            semVISA.release()
             time.sleep(SAMPLING_RATE)
         startTime = time.time()
         while(time.time() - startTime < timeResting):
-            sem.acquire()
+            semVISA.acquire()
             current = configMeasureQuery(devices.pwrSupply, "CURR")
             current = str(round(float(current), 3))
-            sem.release()
-            if(float(current)<=cell.Icut):
-                sem.acquire()
+            semVISA.release()
+            global killThread
+            if(float(current)<=cell.Icut or killThread):
+                semVISA.acquire()
                 routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
                 #output(0, devices.pwrSupply, "PS")
-                global killThread
-                killThread = True
-                sem.release()
+                semVISA.release()
                 sendMessage.sendMessage("Test is over")
                 exit()
             time.sleep(SAMPLING_RATE)
@@ -622,29 +628,45 @@ def setTest(idTest,observer):
 
     random.seed(SEED)
 
+
     if result==1:
+        serialComm.send_data("relay2=off\n")
+        serialComm.send_data("relay1=on\n")
+        
         CHARGE = True
         for cell in CELLS:
             if(cell.soc==None):
                 cell.setSOC(0)
         startTestCharge(idTest,crate)
     elif result==2:
+        serialComm.send_data("relay1=off\n")
+        serialComm.send_data("relay2=on\n")
         profile = RandomProfile()
         startTestDischarge(profile,idTest)
     elif result==3:
+        serialComm.send_data("relay1=off\n")
+        serialComm.send_data("relay2=on\n")
         profile = PulseProfile()
         profile.setAmpl(crate)
         startTestDischarge(profile,idTest)
     elif result==4:
+        serialComm.send_data("relay1=off\n")
+        serialComm.send_data("relay2=on\n")
         profile = HppcProfile()
         startTestDischarge(profile,idTest)
     elif result==5:
+        serialComm.send_data("relay1=off\n")
+        serialComm.send_data("relay2=on\n")
         profile=ConstantProfile()
         profile.setAmpl(crate)
         startTestDischarge(profile,idTest)
     elif result==6:
+        serialComm.send_data("relay1=off\n")
+        serialComm.send_data("relay2=on\n")
         profile=DSTProfile()
         startTestDischarge(profile,idTest)
     elif result==7:
+        serialComm.send_data("relay1=off\n")
+        serialComm.send_data("relay2=on\n")
         profile=RDSTProfile()
         startTestDischarge(profile,idTest)

@@ -4,6 +4,7 @@
 import http.server
 import databaseBuild
 import sampler
+import healthTest
 import json
 from threading import Thread
 
