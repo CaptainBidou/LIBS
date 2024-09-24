@@ -11,7 +11,7 @@ echo "apache server started"
 
 
 @REM start of angular project
-cd C:\LIBS-FRONT\liion-master
+cd C:\LIBS-FRONT\liion
 start ng serve
 echo "angular project started"
 

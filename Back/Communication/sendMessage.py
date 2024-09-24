@@ -19,4 +19,4 @@ def sendMessage(message):
     return result.status_code
 
 if __name__ == "__main__":
-    sendMessage("Hello World")
+    sendMessage("Hello world")

@@ -1,0 +1,20 @@
+To create a charge or discharge profile : 
+
+1- Create in the database (The "actions" table) the line with : id, name, brief (that is a brief name for the dataset export),
+charge_bool (true = charge profile,false= discharge profile), crate_bool (true if you use crate false if not),
+function (the function that will be used to generate the profile),
+Note : look into the database to respect the naming convention. (NameFunctionProfile)
+
+2- Create a file in the /Profile folder with the same name as in the database in the function field but without the "Profile".
+
+3- In the file you have to create a class that inherit from the Profile class (don't forget to import the Profile class).
+Note : if you use the crate import the ProfileCrate class.
+
+
+NOTABENE : To inherit properly the profile class you have to implement the following methods :
+    __init__(self)
+    getAmpl(self)
+    getTimeResting(self)
+    getTimePulsing(self)
+
+4- Import your new profile in the file "importProfile.py" in the parent folder.
