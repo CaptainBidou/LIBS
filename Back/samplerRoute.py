@@ -394,3 +394,18 @@ def setTest(test):
 def measureAmbient():
     temperature=serialComm.send_data("ambientTemperature?\n")
     return temperature
+
+def getArduinoStatus():
+    try:
+        temp = serialComm.send_data("ambientTemperature?\n")
+        return True
+    except:
+        return False
+    
+def getDeviceStatus():
+    try:
+        temp = configMeasureQuery(devices.electLoad, "VOLT")
+        print(temp)
+        return True
+    except:
+        return False

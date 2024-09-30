@@ -90,18 +90,15 @@ def handleRouteGet(route,param):
         test=tab2[0]
         tab = samplerRoute.getVoltageCurrent(test)
         return tab
-    
-    if route == "/arduino_relay":
-        pass
-    if route == "/arduino_temp":
-        pass
+    if route == "/arduino":
+        return samplerRoute.getArduinoStatus()
     if route == "/database":
         import Class.Route.phpMyAdmin as phpMyAdmin
+        print(phpMyAdmin.getStatus())
         return phpMyAdmin.getStatus()
-        pass
-    if route == "/devices":
-        
-        pass
+    if route == "/device":
+        return samplerRoute.getDeviceStatus()
+
     if route =="/temperature":
         # ambientTemp = sampler.measureAmbient()
         ambientTemp=20.2
