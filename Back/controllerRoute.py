@@ -96,8 +96,11 @@ def handleRouteGet(route,param):
     if route == "/arduino_temp":
         pass
     if route == "/database":
+        import Class.Route.phpMyAdmin as phpMyAdmin
+        return phpMyAdmin.getStatus()
         pass
     if route == "/devices":
+        
         pass
     if route =="/temperature":
         # ambientTemp = sampler.measureAmbient()
