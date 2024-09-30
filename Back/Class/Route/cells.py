@@ -10,3 +10,6 @@ def post(cell):
 
 def update(cell):
     return phpMyAdmin.request("UPDATE `cells` SET name = %s, soc = %s WHERE id = %s", (cell.name,cell.soc,cell.id,))
+
+def put(cell):
+    return phpMyAdmin.request("INSERT INTO `cells` (`name`, `soc`) VALUES (%s, %s)", (cell.name,cell.soc,))
