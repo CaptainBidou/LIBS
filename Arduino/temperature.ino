@@ -3,10 +3,12 @@
 
 #include <math.h>
 
-const int ambientSensor = A0;  // Analog input pin that the LM35DZ is attached to
-const int surfaceSensor = A1;  // Analog input pin that the NTC 100k is attached to
-float ambientTemperature = 0;     // value read from the LM35DZ
-double surfaceTemperature = 0; // value read from the NTC 10k
+const int ambientSensor = A1;  // Analog input pin that the LM35DZ is attached to
+const int surfaceSensorPlus = A0;  // Analog input pin that the NTC 100k is attached to
+const int surfaceSensorMinus = A2; 
+double ambientTemperature = 0;     // value read from the LM35DZ
+double surfaceTemperaturePlus = 0; // value read from the NTC 10k
+double surfaceTemperatureMinus = 0; // value read from the NTC 10k
 
 float ADC_coef = 204.6;//number/V    
 
@@ -29,7 +31,8 @@ bool RelayControl4State = LOW;
 void setup() {
 
     pinMode(ambientSensor, INPUT);
-    pinMode(surfaceSensor, INPUT);
+    pinMode(surfaceSensorPlus, INPUT);
+    pinMode(surfaceSensorMinus, INPUT);
     pinMode(RelayControl1, OUTPUT);
     pinMode(RelayControl2, OUTPUT);
     pinMode(RelayControl3, OUTPUT);
@@ -82,13 +85,23 @@ void loop() {
 
     }
     case 6:{
-      int temp = analogRead(surfaceSensor);//get the adc value
+      int temp = analogRead(surfaceSensorPlus);//get the adc value
       float volt = temp / ADC_coef;//convert the adc into voltage
       float resistor = (volt*10000)/(5-volt);//convert the voltage into resistor
       double functLog=log(resistor/10000);
       double logarithm = double((25+273.5)*functLog+3380);//compute the denominator value
-      surfaceTemperature = float((float(3380))/(logarithm));//compute the temperature value
-      Serial.print(((25+273.5)*surfaceTemperature)-273.5);
+      surfaceTemperaturePlus = float((float(3380))/(logarithm));//compute the temperature value
+      Serial.print(((25+273.5)*surfaceTemperaturePlus)-273.5);
+      break;
+    }
+    case 7:{
+      int temp = analogRead(surfaceSensorMinus);//get the adc value
+      float volt = temp / ADC_coef;//convert the adc into voltage
+      float resistor = (volt*12000)/(5-volt);//convert the voltage into resistor
+      double functLog=log(resistor/10000);
+      double logarithm = double((25+273.5)*functLog+3380);//compute the denominator value
+      surfaceTemperatureMinus = float((float(3380))/(logarithm));//compute the temperature value
+      Serial.print(((25+273.5)*surfaceTemperatureMinus)-273.5);
       break;
     }
   }

@@ -4,7 +4,7 @@ arduino = None
 
 
 try:
-	arduino = serial.Serial(port='COM6', baudrate=115200, timeout=0.2)
+	arduino = serial.Serial(port='COM5', baudrate=115200, timeout=0.1)
 	time.sleep(2)
 	
 	
@@ -20,29 +20,50 @@ except serial.serialutil.SerialException:
 
 def parser(string):
 	# add every ascii value of the char of the string 
-	value = 0
-	for i in string:
-		value += ord(i)
+	if string == "relay1=on\n":
+		value = 2
+	elif string == "relay1=off\n":
+		value = 0
+	elif string == "relay2=on\n":
+		value = 3
+	elif string == "relay2=off\n":
+		value = 1
+	elif string == "surfaceTemperaturePlus?\n":
+		value = 5
+	elif string == "surfaceTemperatureMinus?\n":
+		value = 6
+	elif string == "ambientTemperature?\n":
+		value = 4
 	
-	return str(value)
+	return value 
 		
 
 def write_read(x): 
 	arduino.write(x) 
-	time.sleep(0.3) 
+	time.sleep(0.05) 
 	data = arduino.readline() 
 	return data 
 
 def send_data(data):
-	result = write_read(bytes(parser(data),"utf-8"))
+	result = write_read(bytes(str(parser(data)), 'utf-8'))
 	stringRes = result.decode('utf-8')
 	print(stringRes)
 	floatRes = float(stringRes)
 	return floatRes
 
 
-# send_data("relay1=off\n")
-# send_data("relay2=off\n")
+send_data("relay1=off\n")
+send_data("relay2=off\n")
+send_data("relay1=off\n")
+send_data("relay2=off\n")
+send_data("relay1=off\n")
+send_data("relay2=off\n")
+send_data("relay1=off\n")
+send_data("relay2=off\n")
+send_data("relay1=off\n")
+send_data("surfaceTemperatureMinus?\n")
+send_data("ambientTemperature?\n")
+send_data("surfaceTemperaturePlus?\n")
 
 if __name__ == '__main__':
 	while True:
