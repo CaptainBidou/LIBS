@@ -100,8 +100,7 @@ def handleRouteGet(route,param):
     if route == "/devices":
         pass
     if route =="/temperature":
-        # ambientTemp = sampler.measureAmbient()
-        ambientTemp=20.2
+        ambientTemp = samplerRoute.measureAmbient()
         ambientTemp = '{"ambientTemperature":'+str(ambientTemp)+'}'
         return ambientTemp
 

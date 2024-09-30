@@ -37,7 +37,7 @@ semVISA = threading.BoundedSemaphore(1)
 def calculIt(value):
     global TEST
     print(TEST)
-    return float(value)*TEST.cellsList[0].Qn/100
+    return float(value)*TEST.cellsList[0].Qn
 
 def verifyCellVmin(volt,cells):
     for cell in cells:
@@ -75,9 +75,6 @@ def startMeasure(idTest,device,mode):
     surfaceTempPlus = serialComm.send_data("surfaceTemperaturePlus?\n")
     surfaceTempMinus = serialComm.send_data("surfaceTemperatureMinus?\n")
     ambientTemp = serialComm.send_data("ambientTemperature?\n")
-    surfaceTempPlus=20
-    surfaceTempMinus=20
-    ambientTemp = 18
 
     mesure = importDatabase.Measure.measureConstruct(TEST,TEST.cellsList[0],ampePwrSupply,voltPwrSupply,ambientTemp,surfaceTempPlus,surfaceTempMinus)
     id = importRoute.measure.put(mesure)
@@ -135,9 +132,10 @@ def configELWrite(device):
     device.write('STAT:QUES:ENAB 32271')
 
 def exitProg():
-    global DEVICE
-    output(0, DEVICE.electLoad, "EL")
-    output(0, DEVICE.pwrSupply, "PS")
+    pass
+    # global DEVICE
+    # output(0, DEVICE.electLoad, "EL")
+    # output(0, DEVICE.pwrSupply, "PS")
     
 ###################################################################
 ##            S T R U C T    D E C L A R A T I O N               ##
@@ -277,6 +275,7 @@ def startTestDischarge():
             voltage = str(round(float(voltage), 3))
             global killThread
             if(verifyCellVmin(float(voltage),TEST.cellsList) or killThread == True):
+                killThread = True
                 semVISA.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")
@@ -313,6 +312,7 @@ def getVoltageCurrent(test):
 
     if(test.action.crate_bool):
         profile.setAmpl(test.c_rate)
+        print("profile.getAmpl() : "+str(profile.getAmpl()))
 
     if(test.action.chargeBool):
         serialComm.send_data("relay2=off\n")
@@ -340,7 +340,7 @@ def startTestCharge():
     interrupt.start()
     semVISA.acquire()
     startTime = time.time()
-    startProfilePS(cccvProfile.getAmpl()*TEST.cellsList[0].Qn,devices.pwrSupply)
+    startProfilePS(cccvProfile.getAmpl(),devices.pwrSupply)
     timePulsing = cccvProfile.getTimePulsing()
     timeResting = cccvProfile.getTimeResting()
     routine = sohRoutine(lambda:output(1, devices.pwrSupply, "PS"),devices.pwrSupply)
@@ -359,6 +359,7 @@ def startTestCharge():
             semVISA.release()
             global killThread
             if(verifyCurrentMin(float(current),TEST.cellsList) or killThread):
+                killThread = True
                 semVISA.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")

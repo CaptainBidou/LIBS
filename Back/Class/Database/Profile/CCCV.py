@@ -13,3 +13,6 @@ class CCCVProfile(ProfileAbstract.ProfileCrate):
     def getTimePulsing(self):
         self.timePulsing = 25
         return self.timePulsing
+    
+    def setAmpl(self, c_rate):
+        return super().setAmpl(c_rate)

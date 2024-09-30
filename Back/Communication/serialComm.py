@@ -4,7 +4,7 @@ arduino = None
 
 
 try:
-	arduino = serial.Serial(port='COM5', baudrate=115200, timeout=0.1)
+	arduino = serial.Serial(port='COM6', baudrate=115200, timeout=0.1)
 	time.sleep(2)
 	
 	
