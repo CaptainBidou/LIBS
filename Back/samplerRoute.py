@@ -277,6 +277,7 @@ def startTestDischarge():
             voltage = str(round(float(voltage), 3))
             global killThread
             if(verifyCellVmin(float(voltage),TEST.cellsList) or killThread == True):
+                importRoute.test.post(TEST.id,0)
                 semVISA.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")
@@ -359,6 +360,7 @@ def startTestCharge():
             semVISA.release()
             global killThread
             if(verifyCurrentMin(float(current),TEST.cellsList) or killThread):
+                importRoute.test.post(TEST.id,0)
                 semVISA.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")
@@ -396,3 +398,18 @@ def setTest(test):
 def measureAmbient():
     temperature=serialComm.send_data("ambientTemperature?\n")
     return temperature
+
+def getArduinoStatus():
+    try:
+        temp = serialComm.send_data("ambientTemperature?\n")
+        return True
+    except:
+        return False
+    
+def getDeviceStatus():
+    try:
+        temp = configMeasureQuery(devices.electLoad, "VOLT")
+        print(temp)
+        return True
+    except:
+        return False
