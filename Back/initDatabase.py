@@ -8,6 +8,10 @@ mydb = mysql.connector.connect(
 )
 
 mycursor = mydb.cursor()
+# delete libs
+mycursor.execute("DROP DATABASE IF EXISTS LIBS")
+
+
 mycursor.execute("CREATE DATABASE LIBS")
 
 mydb = mysql.connector.connect(

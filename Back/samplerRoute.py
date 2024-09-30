@@ -71,9 +71,9 @@ def startMeasure(idTest,device,mode):
     voltPwrSupply = str(round(float(configMeasureQuery(device, "VOLT")), 3))
     ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
     semVISA.release() 
-    # surfaceTempPlus = serialComm.send_data("surfaceTemperaturePlus?\n")
-    # surfaceTempMinus = serialComm.send_data("surfaceTemperatureMinus?\n")
-    # ambientTemp = serialComm.send_data("ambientTemperature?\n")
+    surfaceTempPlus = serialComm.send_data("surfaceTemperaturePlus?\n")
+    surfaceTempMinus = serialComm.send_data("surfaceTemperatureMinus?\n")
+    ambientTemp = serialComm.send_data("ambientTemperature?\n")
     surfaceTempPlus=20
     surfaceTempMinus=20
     ambientTemp = 18
