@@ -32,6 +32,8 @@ class test():
         if len(self.observersList) > 0:
             stri = stri[:-1]
         stri += '],"running_bool":"' + str(self.running_bool) + '"}'
+
+        print(stri)
         return stri
 
 class testConstruct():
@@ -40,11 +42,11 @@ class testConstruct():
         self.comment = test["comment"]
         self.c_rate = test["c_rate"]
         self.cellsList = []
-        for cellElt in test["cells"]:
+        for cellElt in test["cellsList"]:
             self.cellsList.append(Class.Database.cell.cellConstruct(cellElt))
         self.observersList = []
-        for observerElt in test["observers"]:
+        for observerElt in test["observersList"]:
             self.observersList.append(Class.Database.observer.observerConstruct(observerElt))
-        self.running_bool = test["running_bool"]
+        self.running_bool = 0
     def toTuple(self):
         return (self.action,self.comment,self.c_rate,self.cellsList,self.observersList,self.running_bool)

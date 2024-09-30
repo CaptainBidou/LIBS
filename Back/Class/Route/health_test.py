@@ -40,3 +40,29 @@ def delete(data):
     # phpMyAdmin.request("DELETE FROM measures WHERE id_test = %s", (id,))
 
     # return phpMyAdmin.request("DELETE FROM tests WHERE id = %s", (id,))
+
+def put(healthTest):
+
+    if (healthTest == None):
+        return False
+    
+    # insert the healthTest
+    healthTest.id=phpMyAdmin.requestInsert("INSERT INTO health_tests (comment) VALUES ( %s)", (healthTest.commentary,))
+
+    #  for each test in testsList we insert the test and the time in the tests_relation table
+
+    for test in healthTest.testsList :
+
+    
+        test.id=phpMyAdmin.requestInsert("INSERT INTO tests (id_action, comment,c_rate,running_bool) VALUES ( %s, %s, %s, %s)\
+                                 ", ( test.action.id, test.comment, test.c_rate, test.running_bool))
+    # insert into the cells_relations table
+        for cell in test.cellsList:
+            phpMyAdmin.request("INSERT INTO cells_relations (id_test, id_cell) VALUES (%s, %s)", (test.id, cell.id))
+        for observer in test.observersList:
+            phpMyAdmin.request("INSERT INTO observers_relations (id_test, id_observer) VALUES (%s, %s)", (test.id, observer.id))
+        # get the last inserted id
+
+        phpMyAdmin.request("INSERT INTO tests_relations (id_test, id_health_test, time_resting) VALUES (%s, %s, %s)", (test.id, healthTest.id, healthTest.timeRestsList[healthTest.testsList.index(test)]))
+    
+    return healthTest.id

@@ -140,7 +140,7 @@ def handleRoutePut(route,param):
     if route=="/cell":
         return importRoute.cell.put(importDatabase.Cell.newCellConstruct(param))
     if route =="/health_test":
-        return importRoute.health_test.put(param)
+        return importRoute.health_test.put(importDatabase.HealthTest.health_testConstruct(param))
     
 
 def handleRouteDelete(route,param):

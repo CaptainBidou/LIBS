@@ -36,6 +36,7 @@ semVISA = threading.BoundedSemaphore(1)
 ###################################################################
 def calculIt(value):
     global TEST
+    print(TEST)
     return float(value)*TEST.cellsList[0].Qn/100
 
 def verifyCellVmin(volt,cells):
@@ -304,6 +305,9 @@ def getVoltageCurrent(test):
     global SEED
     SEED = random.randint(0, 100)
     random.seed(SEED)
+
+    global TEST 
+    TEST =test
 
     profile = test.action.function()
 
