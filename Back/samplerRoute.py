@@ -7,6 +7,7 @@ import pyvisa as visa
 import random
 import threading
 import atexit
+import Communication.bms as bms
 from threading import Thread
 import Communication.sendMessage as sendMessage
 import Communication.serialComm as serialComm
@@ -23,6 +24,7 @@ TEST = 0
 ESTIMATORTAB = {}
 ESTIMATORID={}
 SEED = 0
+ESTIMATORCELL = {}
 
 
 ###################################################################
@@ -91,6 +93,32 @@ def startMeasure(idTest,device,mode):
         threadSOC = Thread(target=socThread, args=(cell,float(ampePwrSupply),))
         threadSOC.start()
     exit()
+
+
+
+def startMeasureBMS(idTest,device,mode):
+    if(mode != "PS" and mode != "EL"):
+        return
+    global TEST
+    ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
+    semVISA.release() 
+    ambientTemp = serialComm.send_data("ambientTemperature?\n")
+    for i in range(0,8):
+        objet = bms.measure(i+1)
+        volt = objet["voltage"]
+        temp = objet["temperature"]
+        mesure = importDatabase.Measure.measureConstruct(TEST,TEST.cellsList[i],ampePwrSupply,volt,ambientTemp,temp,temp)
+        id = importRoute.measure.put(mesure)
+        global ESTIMATORTAB
+        global ESTIMATORID
+        global ESTIMATORCELL
+        for estimators in TEST.observersList:
+            threadEstimation = Thread(target=estimator, args=(id,volt,ampePwrSupply,(TEST.cellsList[i],estimators),))
+            threadEstimation.start()
+        threadSOC = Thread(target=socThread, args=(TEST.cellsList[i],float(ampePwrSupply),))
+        threadSOC.start()
+    exit()
+    
     
 def startProfilePS(value,device):
     global TEST
@@ -167,10 +195,15 @@ class Counter():
 
     def _run(self):
         global killThread
+        global TEST
         while not self.done and not killThread :
         
             semVISA.acquire()
-            threading.Timer(0.0,startMeasure,(self.idTest, self.device,self.mode,)).start()
+            if (TEST.cellscellsList.__len__== 1):
+                threading.Timer(0.0,startMeasure,(self.idTest, self.device,self.mode,)).start()
+            else :
+                threading.Timer(0.0,startMeasureBMS,(self.idTest, self.device,self.mode,)).start()
+
             time.sleep(self.increment)
 
     def stop(self):
@@ -184,7 +217,12 @@ class estimator():
         self.amp = amp
         self.idMeasure = idMeasure
         self.id = id
-        self.run()
+        global TEST
+        if (TEST.cellsList.__len__>1):
+            self.runBMS()
+        else:
+            self.run()
+
 
     def run(self):
         global TEST
@@ -192,6 +230,15 @@ class estimator():
         g,x=ESTIMATORTAB[self.id].runOneStep(self.volt,self.amp,TEST.action.chargeBool)
         print("voltage :"+str(g)+" SOC :"+str(x))
         measure_est = importDatabase.MeasureEstimator.measure_estimatorConstruct(self.idMeasure,self.id,0,0,g,x)
+        importRoute.measure_observer.put(measure_est)
+        exit()
+
+    def runBMS(self):
+        global TEST
+        global ESTIMATORCELL
+        g,x=ESTIMATORCELL[self.id[0]][self.id[1]]["function"].runOneStep(self.volt,self.amp,TEST.action.chargeBool)
+        print("voltage :"+str(g)+" SOC :"+str(x))
+        measure_est = importDatabase.MeasureEstimator.measure_estimatorConstruct(self.idMeasure,self.id[1],0,0,g,x)
         importRoute.measure_observer.put(measure_est)
         exit()
 
@@ -206,6 +253,12 @@ class socThread():
             self.cell.soc = self.cell.soc + self.current/(self.cell.Qn*3600)
         else:
             self.cell.soc = self.cell.soc - self.current/(self.cell.Qn*3600)
+
+        if(self.cell.soc<0):
+            self.cell.soc =0
+        
+        if(self.cell.soc>1):
+            self.cell.soc=1
             
         importRoute.cell.update(self.cell)
         exit()
@@ -214,16 +267,24 @@ class socThread():
 class sohRoutine():
     def __init__(self,funct,dev):
         global TEST
-        self.cell = TEST.cellsList[0] #to change when we have multiple cells
         self.funct = funct
         self.device = dev
         self.aCurrent = 0
         self.bCurrent = 0
         self.aVoltage = 0
         self.bVoltage = 0
+        self.voltTabA={}
+        self.voltTabB={}
         self.voc=None
         self.r0 =0
-        self.run()
+        if(TEST.cellsList.__len__>1):
+            self.cell = TEST.cellsList
+            self.runBMS()
+        else :
+            self.cell = TEST.cellsList[0]
+            self.run()
+
+
     def run(self):
         self.aVoltage = float(configMeasureQuery(self.device, "VOLT"))
         self.aCurrent = float(configMeasureQuery(self.device, "CURR"))
@@ -239,10 +300,32 @@ class sohRoutine():
             self.voc=self.aVoltage
 
         global TEST
-        result = importDatabase.MeasureSoh.soh_measureConstruct(TEST,self.cell,self.voc,self.r0,self.cell.soc,time.time())
+        result = importDatabase.MeasureSoh.soh_measureConstruct(TEST,self.cell,self.voc,self.aCurrent,self.bVoltage,self.bCurrent,self.r0,self.cell.soc,time.time())
         importRoute.measure_soh.put(result)
         # dataSend = Thread(target = databaseBuild.createSohMeasure, args=(TEST.id,self.cell.id,self.voc,self.r0,self.cell.soc,))
         # dataSend.start()
+        return
+    
+    def runBMS(self):
+        self.voltTabA = bms.measure_soh()
+        self.aCurrent = float(configMeasureQuery(self.device, "CURR"))
+        self.funct()
+        self.voltTabB = bms.measure_soh()
+        self.bCurrent = float(configMeasureQuery(self.device, "CURR"))
+        while(round(self.bCurrent,1) == round(self.aCurrent,1)):
+            self.bCurrent = float(configMeasureQuery(self.device, "CURR"))
+            self.voltTabB = bms.measure_soh()
+            time.sleep(0.01)
+        global TEST
+        for i in range(0,8):
+            self.cell = TEST.cellsList[i]
+            self.aVoltage = self.voltTabA["v"+str(i+1)]
+            self.bVoltage = self.voltTabB["v"+str(i+1)]
+            self.r0 = abs(self.aVoltage-self.bVoltage)/abs(self.aCurrent-self.bCurrent)
+            if(self.aVoltage>self.bVoltage):
+                self.voc=self.aVoltage
+            result = importDatabase.MeasureSoh.soh_measureConstruct(TEST,self.cell,self.voc,self.aCurrent,self.bVoltage,self.bCurrent,self.r0,self.cell.soc,time.time())
+            importRoute.measure_soh.put(result)
         return
 ########################################################################
 devices = MeasuringDevice(POWER_SUPPLY, ELECTRONIC_LOAD)
@@ -378,11 +461,22 @@ def setTest(test):
     TEST = test
     global ESTIMATORTAB
     global ESTIMATORID
-    
-    for estimators in TEST.observersList:
-        est=estimators.function()
-        ESTIMATORID[est.toString()]=estimators.id
-        ESTIMATORTAB[estimators.id] = est
+
+    if(TEST.cellsList.__len__>1):
+        global ESTIMATORCELL
+        for cell in TEST.cellsList:
+            ESTIMATORCELL[cell.id]={}
+            for estimators in TEST.observersList:
+                ESTIMATORCELL[cell.id][estimators.id]={}
+                est=estimators.function()
+                ESTIMATORCELL[cell.id][estimators.id]["name"] = est.toString()
+                ESTIMATORCELL[cell.id][estimators.id]["function"] = est
+                ESTIMATORCELL[cell.id][estimators.id]["id"] = estimators.id
+    else :
+        for estimators in TEST.observersList:
+            est=estimators.function()
+            ESTIMATORID[est.toString()]=estimators.id
+            ESTIMATORTAB[estimators.id] = est
 
     random.seed(SEED)
 
@@ -410,6 +504,16 @@ def getArduinoStatus():
 def getDeviceStatus():
     try:
         temp = configMeasureQuery(devices.electLoad, "VOLT")
+        temp = configMeasureQuery(devices.pwrSupply, "VOLT")
+        print(temp)
+        return True
+    except:
+        return False
+    
+
+def getBMSStatus():
+    try:
+        temp = bms.measure(1)
         print(temp)
         return True
     except:

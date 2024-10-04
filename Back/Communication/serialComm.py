@@ -10,7 +10,6 @@ try:
 	
 except serial.serialutil.SerialException:
 	print("Arduino not connected")
-	exit()
 
 
 
@@ -54,16 +53,6 @@ def send_data(data):
 
 send_data("relay1=off\n")
 send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("surfaceTemperatureMinus?\n")
-send_data("ambientTemperature?\n")
-send_data("surfaceTemperaturePlus?\n")
 
 if __name__ == '__main__':
 	while True:
