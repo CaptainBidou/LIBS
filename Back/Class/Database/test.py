@@ -6,17 +6,17 @@ class test():
     def __init__(self,tuple):
         self.id = tuple[0]
         self.time = tuple[1]
-        self.action = Class.Database.action.action((tuple[2],tuple[3],tuple[4],tuple[7],tuple[5],tuple[6]))
-        self.comment = tuple[8]
-        self.c_rate = tuple[9]
-        self.running_bool = tuple[10]
+        self.action = Class.Database.action.action((tuple[2],tuple[3],tuple[4],tuple[8],tuple[7],tuple[6],tuple[5],))
+        self.comment = tuple[9]
+        self.c_rate = tuple[10]
+        self.running_bool = tuple[11]
         self.cellsList = []
         # self.cellsList.append(Class.Database.cell.cell((tuple[11],tuple[12],tuple[13])))
         
-        for cellElt in tuple[11]:
+        for cellElt in tuple[12]:
             self.cellsList.append(Class.Database.cell.cell(cellElt))
         self.observersList = []
-        for observerElt in tuple[12]:
+        for observerElt in tuple[13]:
             self.observersList.append(Class.Database.observer.observer(observerElt))
         # self.observersList.append(Class.Database.observer.observer((tuple[14],tuple[15],tuple[16])))
     def toString(self):
