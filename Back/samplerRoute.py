@@ -25,6 +25,8 @@ ESTIMATORTAB = {}
 ESTIMATORID={}
 SEED = 0
 ESTIMATORCELL = {}
+DEVICE = {}
+DEVICEMOD=""
 
 
 ###################################################################
@@ -42,6 +44,13 @@ def calculIt(value):
     return float(value)*TEST.cellsList[0].Qn
 
 def verifyCellVmin(volt,cells):
+    if(TEST.cellsList.__len__>1):
+        measure = bms.measure_soh()
+        for i in range(0,8):
+            if(measure["v"+str(i+1)]<=TEST.cellsList[i].Vmin):
+                return True
+        return False
+
     for cell in cells:
         if(volt<=cell.Vmin):
             return True
@@ -196,13 +205,22 @@ class Counter():
     def _run(self):
         global killThread
         global TEST
+        global DEVICE
+        global DEVICEMOD
         while not self.done and not killThread :
         
             semVISA.acquire()
-            if (TEST.cellscellsList.__len__== 1):
-                threading.Timer(0.0,startMeasure,(self.idTest, self.device,self.mode,)).start()
-            else :
-                threading.Timer(0.0,startMeasureBMS,(self.idTest, self.device,self.mode,)).start()
+            if(TEST.action.chargeBool==1 and TEST.action.dischargeBool==1):
+                if (TEST.cellscellsList.__len__== 1):
+                    threading.Timer(0.0,startMeasure,(self.idTest, DEVICE,DEVICEMOD,)).start()
+                else :
+                    threading.Timer(0.0,startMeasureBMS,(self.idTest, DEVICE,DEVICEMOD,)).start()
+
+            else:
+                if (TEST.cellscellsList.__len__== 1):
+                    threading.Timer(0.0,startMeasure,(self.idTest, self.device,self.mode,)).start()
+                else :
+                    threading.Timer(0.0,startMeasureBMS,(self.idTest, self.device,self.mode,)).start()
 
             time.sleep(self.increment)
 
@@ -454,6 +472,85 @@ def startTestCharge():
                 exit()
             time.sleep(SAMPLING_RATE)
 
+def startTestChargeDischarge():
+    global TEST
+    global DEVICE 
+    global DEVICEMOD
+    DEVICE = devices.electLoad
+    DEVICEMOD ="EL"
+    profile = TEST.action.function()
+    startProfileEL(0, 5, devices.electLoad)
+    interrupt = Thread(target=Counter, args=(SAMPLING_RATE,TEST.id,DEVICE,DEVICEMOD,)) #mettre au point le device en global et changer quand on change de device
+    interrupt.start()
+
+    while (True):
+        
+        semVISA.acquire()
+        startTime = time.time()
+        ampl = profile.getAmpl()
+        timePulsing = profile.getTimePulsing()
+        if(ampl>0):
+            DEVICE = devices.electLoad
+            DEVICEMOD ="EL"
+            routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+            serialComm.send_data("relay1=off\n")
+            serialComm.send_data("relay2=on\n")
+            startProfileEL(ampl*TEST.cellsList[0].Qn, 5, devices.electLoad)
+            routine = sohRoutine(lambda:output(1, devices.electLoad, "EL"),devices.electLoad)
+        if(ampl<0):
+            DEVICE = devices.pwrSupply
+            DEVICE ="PS"
+            routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+            serialComm.send_data("relay2=off\n")
+            serialComm.send_data("relay1=on\n")
+            startProfilePS(ampl,devices.pwrSupply)
+            routine = sohRoutine(lambda:output(1, devices.pwrSupply, "PS"),devices.pwrSupply)
+        if(ampl==0):
+            DEVICE = devices.electLoad
+            DEVICE ="EL"
+            routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+            serialComm.send_data("relay2=off\n")
+            serialComm.send_data("relay1=on\n")
+            startProfileEL(ampl*TEST.cellsList[0].Qn, 5, devices.electLoad)
+            routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+        semVISA.release()
+
+        while (time.time() - startTime < timePulsing):
+            print("timePulsing")
+            semVISA.acquire()
+            voltage = configMeasureQuery(DEVICE, "VOLT")#variable globale pour 
+            current = configMeasureQuery(DEVICE, "CURR")
+            current = str(round(float(current), 3))
+            semVISA.release()
+
+            voltage = str(round(float(voltage), 3))
+            global killThread
+            if(verifyCellVmin(float(voltage),TEST.cellsList) or killThread == True or verifyCurrentMin(float(current),TEST.cellsList)):
+                importRoute.test.post(TEST.id,0)
+                killThread = True
+                semVISA.acquire()
+                serialComm.send_data("relay2=off\n")
+                serialComm.send_data("relay1=off\n")
+                routine = sohRoutine(lambda:output(0, DEVICE, DEVICEMOD),DEVICE)
+                print("We turn off everything before leaving")
+                sendMessage.sendMessage("Test is over")
+                semVISA.release()
+                exit()
+            time.sleep(SAMPLING_RATE)
+        timeResting = profile.getTimeResting()
+        startTime = time.time()
+        
+        if(time.time() - startTime < timeResting):#it's always true but not for the DST profile ( check the trick )
+            semVISA.acquire()
+            routine = sohRoutine(lambda:output(0, DEVICE, DEVICEMOD),DEVICE)
+            semVISA.release()
+        while (time.time() - startTime < timeResting):
+            print("timeResting")
+            
+            if(killThread):
+                exit()
+            time.sleep(SAMPLING_RATE)
+
 
 
 def setTest(test):
@@ -480,14 +577,16 @@ def setTest(test):
 
     random.seed(SEED)
 
-    if TEST.action.chargeBool :
+    if TEST.action.chargeBool and TEST.action.dischargeBool==0 :
         serialComm.send_data("relay2=off\n")
         serialComm.send_data("relay1=on\n")
         startTestCharge()
-    else :
+    elif TEST.action.dischargeBool and TEST.action.chargeBool==0 :
         serialComm.send_data("relay1=off\n")
         serialComm.send_data("relay2=on\n")
         startTestDischarge()
+    elif TEST.action.dischargeBool and TEST.action.chargeBool :
+        startTestChargeDischarge()
 
 
 def measureAmbient():

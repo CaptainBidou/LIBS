@@ -2,13 +2,17 @@ import Class.Database.Profile.ProfileAbstract as ProfileAbstract
 class HppcProfile(ProfileAbstract.Profile):
     def __init__(self):
         self.step = 0
-        self.ampl = [0.25, 0.5, 1.0, 1.5]
-        self.timeResting = 10*60
-        self.timePulsing = 55
+        self.ampl = [1.95, 0, -1.46, 1]
+        self.timeResting = 0
+        self.timePulsing = [18,32,10,(10/3.08)*60*60]
 
     def getAmpl(self):
-        return 1
+        return self.ampl[self.step]
     def getTimeResting(self):
         return self.timeResting
     def getTimePulsing(self):
-        return self.timePulsing
+        record = self.timePulsing[self.step]
+        self.step = self.step + 1
+        if (self.step == 4):
+            self.step = 0
+        return record 
