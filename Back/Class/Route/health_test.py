@@ -5,7 +5,7 @@ def get(data):
     sqlCell = "SELECT cells.id, cells.name, cells.soc FROM cells JOIN cells_relations ON cells.id = cells_relations.id_cell WHERE cells_relations.id_test = "
     sqlObserver = "SELECT observers.id, observers.name, observers.function FROM observers\
         JOIN observers_relations ON observers.id = observers_relations.id_observer WHERE observers_relations.id_test = "
-    sqlTest = "SELECT tests.id, tests.time, tests.id_action, actions.name, actions.brief, actions.chargeBool, actions.crate_bool,\
+    sqlTest = "SELECT tests.id, tests.time, tests.id_action, actions.name, actions.brief, actions.chargeBool,actions.dischargeBool, actions.crate_bool,\
         actions.function, tests.comment, tests.c_rate, tests.running_bool FROM tests JOIN actions ON tests.id_action = actions.id\
             JOIN tests_relations ON tests.id = tests_relations.id_test WHERE tests_relations.id_health_test = "+data[0]
     sqlTime = "SELECT time_resting FROM tests_relations WHERE id_health_test = "+data[0]+" ORDER BY id_test ASC"
@@ -40,3 +40,29 @@ def delete(data):
     # phpMyAdmin.request("DELETE FROM measures WHERE id_test = %s", (id,))
 
     # return phpMyAdmin.request("DELETE FROM tests WHERE id = %s", (id,))
+
+def put(healthTest):
+
+    if (healthTest == None):
+        return False
+    
+    # insert the healthTest
+    healthTest.id=phpMyAdmin.requestInsert("INSERT INTO health_tests (comment) VALUES ( %s)", (healthTest.commentary,))
+
+    #  for each test in testsList we insert the test and the time in the tests_relation table
+
+    for test in healthTest.testsList :
+
+    
+        test.id=phpMyAdmin.requestInsert("INSERT INTO tests (id_action, comment,c_rate,running_bool) VALUES ( %s, %s, %s, %s)\
+                                 ", ( test.action.id, test.comment, test.c_rate, test.running_bool))
+    # insert into the cells_relations table
+        for cell in test.cellsList:
+            phpMyAdmin.request("INSERT INTO cells_relations (id_test, id_cell) VALUES (%s, %s)", (test.id, cell.id))
+        for observer in test.observersList:
+            phpMyAdmin.request("INSERT INTO observers_relations (id_test, id_observer) VALUES (%s, %s)", (test.id, observer.id))
+        # get the last inserted id
+
+        phpMyAdmin.request("INSERT INTO tests_relations (id_test, id_health_test, time_resting) VALUES (%s, %s, %s)", (test.id, healthTest.id, healthTest.timeRestsList[healthTest.testsList.index(test)]))
+    
+    return healthTest.id

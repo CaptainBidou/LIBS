@@ -15,10 +15,13 @@ class soh_measure():
         + str(self.voc) + '","r0":"' + str(self.r0) + '","soc":"' + str(self.soc) + '","time":"' + str(self.time) + '"}'
 
 class soh_measureConstruct():
-    def __init__(self,test,cell,voc,r0,soc,time):
+    def __init__(self,test,cell,voc,ia,vb,ib,r0,soc,time):
         self.test = test
         self.cell = cell
         self.voc = voc
+        self.ia = ia
+        self.vb = vb
+        self.ib= ib
         self.r0 = r0
         self.soc = soc
         self.time = time

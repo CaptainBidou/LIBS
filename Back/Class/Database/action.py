@@ -26,19 +26,22 @@ class action():
         self.name = tuple[1]
         self.brief = tuple[2]
         self.chargeBool = tuple[4]
-        self.crate_bool = tuple[5]
+        self.dischargeBool = tuple[5]
+        self.crate_bool = tuple[6]
         self.function = globals()[tuple[3]+'Profile'] # function is a name of a function
     def toString(self):
         return '{"id":"' + str(self.id) + '","name":"' + self.name + '","brief":"' + self.brief + '","chargeBool":"' \
-            + str(self.chargeBool) + '","crate_bool":"' + str(self.crate_bool) + '","function":"' + self.function.__name__+'"}'
+            + str(self.chargeBool) + '","dischargeBool":"' \
+            + str(self.dischargeBool) + '","crate_bool":"' + str(self.crate_bool) + '","function":"' + self.function.__name__+'"}'
 
 class actionConstruct():
     def __init__(self,action):
         self.name = action["name"]
         self.brief = action["brief"]
         self.chargeBool = action["chargeBool"]
+        self.dischargeBool = action["dischargeBool"]
         self.crate_bool = action["crate_bool"]
         self.function = globals()[action["function"]]
         self.id = action["id"]
     def toTuple(self):
-        return (self.id,self.name,self.brief,self.function.__name__,self.chargeBool,self.crate_bool)
+        return (self.id,self.name,self.brief,self.function.__name__,self.chargeBool,self.dischargeBool,self.crate_bool)

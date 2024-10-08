@@ -7,13 +7,19 @@ import Class.importRoute as importRoute
 import Class.importDatabase as importDatabase
 import samplerRoute
 from threading import Thread
-# import sampler
 ###################################################################
 ##                   G L O B A L   C O N S T A N T               ##
 ###################################################################
-HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 5000  # Port to listen on (non-privileged ports are > 1023)
+# load json environment.json
+env = json.loads(open("Back/environment.json").read())
 
+HOST = env["HOST"]  # Standard loopback interface address (localhost)
+PORT = env["PORT"]  # Port to listen on (non-privileged ports are > 1023)
+# {
+#     "production": false,
+#     "HOST": "127.0.0.1",
+#     "PORT": 5000
+# }
 ###################################################################
 ##                   G L O B A L   V A R I A B L E S             ##
 ###################################################################
@@ -100,10 +106,12 @@ def handleRouteGet(route,param):
         return samplerRoute.getDeviceStatus()
 
     if route =="/temperature":
-        # ambientTemp = sampler.measureAmbient()
-        ambientTemp=20.2
+        ambientTemp = samplerRoute.measureAmbient()
         ambientTemp = '{"ambientTemperature":'+str(ambientTemp)+'}'
         return ambientTemp
+    
+    if route == "/bms":
+        return samplerRoute.getBMSStatus()
 
 
 def handleRoutePost(route,param):
@@ -140,7 +148,7 @@ def handleRoutePut(route,param):
     if route=="/cell":
         return importRoute.cell.put(importDatabase.Cell.newCellConstruct(param))
     if route =="/health_test":
-        return importRoute.health_test.put(param)
+        return importRoute.health_test.put(importDatabase.HealthTest.health_testConstruct(param))
     
 
 def handleRouteDelete(route,param):
@@ -267,11 +275,13 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         
 
 
-###################################################################
-
+##################################################################
 
 # Create an object of the above class
 handler_object = MyHttpRequestHandler
+
+# logServer.txt
+
 
 my_server = http.server.HTTPServer((HOST, PORT), handler_object)
 print("Server started http://%s:%s" % (HOST, PORT))

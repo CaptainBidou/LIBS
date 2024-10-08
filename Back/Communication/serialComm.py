@@ -4,13 +4,12 @@ arduino = None
 
 
 try:
-	arduino = serial.Serial(port='COM5', baudrate=115200, timeout=0.1)
+	arduino = serial.Serial(port='COM8', baudrate=115200, timeout=0.1)
 	time.sleep(2)
 	
 	
 except serial.serialutil.SerialException:
 	print("Arduino not connected")
-	exit()
 
 
 
@@ -54,16 +53,6 @@ def send_data(data):
 
 send_data("relay1=off\n")
 send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("relay2=off\n")
-send_data("relay1=off\n")
-send_data("surfaceTemperatureMinus?\n")
-send_data("ambientTemperature?\n")
-send_data("surfaceTemperaturePlus?\n")
 
 if __name__ == '__main__':
 	while True:
