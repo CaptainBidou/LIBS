@@ -44,7 +44,7 @@ def calculIt(value):
     return float(value)*TEST.cellsList[0].Qn
 
 def verifyCellVmin(volt,cells):
-    if(TEST.cellsList.__len__>1):
+    if(len(TEST.cellsList)>1):
         measure = bms.measure_soh()
         for i in range(0,8):
             if(measure["v"+str(i+1)]<=TEST.cellsList[i].Vmin):
@@ -211,13 +211,13 @@ class Counter():
         
             semVISA.acquire()
             if(TEST.action.chargeBool==1 and TEST.action.dischargeBool==1):
-                if (TEST.cellscellsList.__len__== 1):
+                if (len(TEST.cellsList)== 1):
                     threading.Timer(0.0,startMeasure,(self.idTest, DEVICE,DEVICEMOD,)).start()
                 else :
                     threading.Timer(0.0,startMeasureBMS,(self.idTest, DEVICE,DEVICEMOD,)).start()
 
             else:
-                if (TEST.cellscellsList.__len__== 1):
+                if (len(TEST.cellsList)== 1):
                     threading.Timer(0.0,startMeasure,(self.idTest, self.device,self.mode,)).start()
                 else :
                     threading.Timer(0.0,startMeasureBMS,(self.idTest, self.device,self.mode,)).start()
@@ -236,7 +236,7 @@ class estimator():
         self.idMeasure = idMeasure
         self.id = id
         global TEST
-        if (TEST.cellsList.__len__>1):
+        if (len(TEST.cellsList)>1):
             self.runBMS()
         else:
             self.run()
@@ -295,7 +295,7 @@ class sohRoutine():
         self.voltTabB={}
         self.voc=None
         self.r0 =0
-        if(TEST.cellsList.__len__>1):
+        if(len(TEST.cellsList)>1):
             self.cell = TEST.cellsList
             self.runBMS()
         else :
@@ -559,7 +559,7 @@ def setTest(test):
     global ESTIMATORTAB
     global ESTIMATORID
 
-    if(TEST.cellsList.__len__>1):
+    if(len(TEST.cellsList)>1):
         global ESTIMATORCELL
         for cell in TEST.cellsList:
             ESTIMATORCELL[cell.id]={}
