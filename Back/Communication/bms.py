@@ -28,11 +28,11 @@ class req():
         try:
             # date is a timestamp
             self.q = self.q + ' FROM "uana"."autogen"."bms" order by time desc limit 1 '
-            print(self.q)
+            # print(self.q)
             r = requests.post(self.url, json={"db":"uana","query":self.q })
             return r.json()
         except:
-            print("Error in request")
+            # print("Error in request")
             return None
 
 
@@ -49,7 +49,7 @@ def get_data(q):
 def measure(slot):
     q = "SELECT bmu1.s1.v"+str(slot)+", bmu1.s1.t"+str(slot)+" "
     obj =  get_data(q)
-    print(obj)
+    # print(obj)
     objet = {}
     objet["voltage"] = obj["results"][0]["series"][0]["values"][0][1]
     objet["temperature"] = obj["results"][0]["series"][0]["values"][0][2]
@@ -59,7 +59,7 @@ def measure(slot):
 def measure_soh():
     q = "SELECT bmu1.s1.v1, bmu1.s1.v2, bmu1.s1.v3, bmu1.s1.v4, bmu1.s1.v5, bmu1.s1.v6, bmu1.s1.v7, bmu1.s1.v8 "
     obj =  get_data(q)
-    print(obj)
+    # print(obj)
     objet = {}
     objet["v1"]= obj["results"][0]["series"][0]["values"][0][1]
     objet["v2"]= obj["results"][0]["series"][0]["values"][0][2]

@@ -25,9 +25,9 @@ class action():
         self.id = tuple[0]
         self.name = tuple[1]
         self.brief = tuple[2]
-        self.chargeBool = tuple[4]
+        self.chargeBool = int(tuple[6])
         self.dischargeBool = tuple[5]
-        self.crate_bool = tuple[6]
+        self.crate_bool = tuple[4]
         self.function = globals()[tuple[3]+'Profile'] # function is a name of a function
     def toString(self):
         return '{"id":"' + str(self.id) + '","name":"' + self.name + '","brief":"' + self.brief + '","chargeBool":"' \

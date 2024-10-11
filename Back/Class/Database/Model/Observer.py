@@ -56,7 +56,7 @@ class Observer(ModelAbstract.Model):
 
     def setPhiHat(self):
         soc = self.xhat[2][0]
-        print("h :" + str(self.h(soc)))
+        # print("h :" + str(self.h(soc)))
         return self.h(soc) - 0.859368465423472 * soc
 
     def setYHat(self,u):

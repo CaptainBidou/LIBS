@@ -243,7 +243,7 @@ def createModel(entree,sortie,epochs,name):
 
     model.compile(loss='mean_squared_error',optimizer='adam')
     for i in range(epochs):
-        print(i)
+        # print(i)
         model.fit(entree,sortie,epochs=1)
         model.save('C:/Users/tjasr/Desktop/LIBS-test/LIBS/Back/Model/FNN/'+name+'.keras')
     return model

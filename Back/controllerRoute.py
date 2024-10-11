@@ -100,7 +100,7 @@ def handleRouteGet(route,param):
         return samplerRoute.getArduinoStatus()
     if route == "/database":
         import Class.Route.phpMyAdmin as phpMyAdmin
-        print(phpMyAdmin.getStatus())
+        # print(phpMyAdmin.getStatus())
         return phpMyAdmin.getStatus()
     if route == "/device":
         return samplerRoute.getDeviceStatus()
@@ -117,7 +117,7 @@ def handleRouteGet(route,param):
 def handleRoutePost(route,param):
     if route=="/start_test":
         # start of the sampler with the test object
-        print("on affiche l'id "+str(param["id"]))
+        # print("on affiche l'id "+str(param["id"]))
         tab = importRoute.test.get(param["id"])
         tab2 = []
         for a in tab:

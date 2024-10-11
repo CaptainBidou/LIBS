@@ -27,6 +27,7 @@ SEED = 0
 ESTIMATORCELL = {}
 DEVICE = {}
 DEVICEMOD=""
+CHARGE = 0
 
 
 ###################################################################
@@ -35,12 +36,13 @@ DEVICEMOD=""
 startTime = 0
 killThread = False
 semVISA = threading.BoundedSemaphore(1)
+semArduino = threading.BoundedSemaphore(1)
 ###################################################################
 ##            F U N C T I O N    D E C L A R A T I O N           ##
 ###################################################################
 def calculIt(value):
     global TEST
-    print(TEST)
+    # print(TEST)
     return float(value)*TEST.cellsList[0].Qn
 
 def verifyCellVmin(volt,cells):
@@ -80,12 +82,18 @@ def startMeasure(idTest,device,mode):
         return
     # send request to the ps
     global TEST
+    global CHARGE
     voltPwrSupply = str(round(float(configMeasureQuery(device, "VOLT")), 3))
     ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
     semVISA.release() 
+    semArduino.acquire()
     surfaceTempPlus = serialComm.send_data("surfaceTemperaturePlus?\n")
     surfaceTempMinus = serialComm.send_data("surfaceTemperatureMinus?\n")
     ambientTemp = serialComm.send_data("ambientTemperature?\n")
+    semArduino.release()
+
+    if(CHARGE == 1):
+        ampePwrSupply= str(-float(ampePwrSupply))
 
     mesure = importDatabase.Measure.measureConstruct(TEST,TEST.cellsList[0],ampePwrSupply,voltPwrSupply,ambientTemp,surfaceTempPlus,surfaceTempMinus)
     id = importRoute.measure.put(mesure)
@@ -99,7 +107,7 @@ def startMeasure(idTest,device,mode):
         threadEstimation = Thread(target=estimator, args=(id,voltPwrSupply,ampePwrSupply,ESTIMATORID[est.toString()],))
         threadEstimation.start()
     for cell in TEST.cellsList:
-        threadSOC = Thread(target=socThread, args=(cell,float(ampePwrSupply),))
+        threadSOC = Thread(target=socThread, args=(cell,abs(float(ampePwrSupply)),))
         threadSOC.start()
     exit()
 
@@ -111,12 +119,16 @@ def startMeasureBMS(idTest,device,mode):
     global TEST
     ampePwrSupply = str(round(float(configMeasureQuery(device, "CURR")), 3))
     semVISA.release() 
+    semArduino.acquire()
     ambientTemp = serialComm.send_data("ambientTemperature?\n")
+    semArduino.release()
     for i in range(0,8):
         objet = bms.measure(i+1)
         volt = objet["voltage"]
         temp = objet["temperature"]
         mesure = importDatabase.Measure.measureConstruct(TEST,TEST.cellsList[i],ampePwrSupply,volt,ambientTemp,temp,temp)
+        if(CHARGE == 1):
+            ampePwrSupply= str(-float(ampePwrSupply))
         id = importRoute.measure.put(mesure)
         global ESTIMATORTAB
         global ESTIMATORID
@@ -124,7 +136,7 @@ def startMeasureBMS(idTest,device,mode):
         for estimators in TEST.observersList:
             threadEstimation = Thread(target=estimator, args=(id,volt,ampePwrSupply,(TEST.cellsList[i],estimators),))
             threadEstimation.start()
-        threadSOC = Thread(target=socThread, args=(TEST.cellsList[i],float(ampePwrSupply),))
+        threadSOC = Thread(target=socThread, args=(TEST.cellsList[i],abs(float(ampePwrSupply)),))
         threadSOC.start()
     exit()
     
@@ -246,7 +258,7 @@ class estimator():
         global TEST
         global ESTIMATORTAB
         g,x=ESTIMATORTAB[self.id].runOneStep(self.volt,self.amp,TEST.action.chargeBool)
-        print("voltage :"+str(g)+" SOC :"+str(x))
+        # print("voltage :"+str(g)+" SOC :"+str(x))
         measure_est = importDatabase.MeasureEstimator.measure_estimatorConstruct(self.idMeasure,self.id,0,0,g,x)
         importRoute.measure_observer.put(measure_est)
         exit()
@@ -255,7 +267,7 @@ class estimator():
         global TEST
         global ESTIMATORCELL
         g,x=ESTIMATORCELL[self.id[0]][self.id[1]]["function"].runOneStep(self.volt,self.amp,TEST.action.chargeBool)
-        print("voltage :"+str(g)+" SOC :"+str(x))
+        # print("voltage :"+str(g)+" SOC :"+str(x))
         measure_est = importDatabase.MeasureEstimator.measure_estimatorConstruct(self.idMeasure,self.id[1],0,0,g,x)
         importRoute.measure_observer.put(measure_est)
         exit()
@@ -379,8 +391,10 @@ def startTestDischarge():
                 importRoute.test.post(TEST.id,0)
                 killThread = True
                 semVISA.acquire()
+                semArduino.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")
+                semArduino.release()
                 routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
                 print("We turn off everything before leaving")
                 sendMessage.sendMessage("Test is over")
@@ -414,20 +428,25 @@ def getVoltageCurrent(test):
 
     if(test.action.crate_bool):
         profile.setAmpl(test.c_rate)
-        print("profile.getAmpl() : "+str(profile.getAmpl()))
+        # print("profile.getAmpl() : "+str(profile.getAmpl()))
 
-    if(test.action.chargeBool):
+    if(test.action.chargeBool==1):
+        semArduino.acquire()
+        print("charge")
         serialComm.send_data("relay2=off\n")
         serialComm.send_data("relay1=on\n")
         voltage =  configMeasureQuery(devices.pwrSupply, "VOLT")
         serialComm.send_data("relay1=off\n")
+        semArduino.release()
         return {"Current": calculIt(profile.getAmpl()), "Voltage": voltage }
 
     else:
+        semArduino.acquire()
         serialComm.send_data("relay1=off\n")
         serialComm.send_data("relay2=on\n") 
         voltage = configMeasureQuery(devices.electLoad, "VOLT")
         serialComm.send_data("relay2=off\n")
+        semArduino.release()
         voltage = round(float(voltage), 3)
         current = profile.getAmpl()*test.cellsList[0].Qn
         current = round(float(current), 3)
@@ -464,9 +483,11 @@ def startTestCharge():
                 importRoute.test.post(TEST.id,0)
                 killThread = True
                 semVISA.acquire()
+                semArduino.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")
                 routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+                semArduino.release()
                 semVISA.release()
                 sendMessage.sendMessage("Test is over")
                 exit()
@@ -476,44 +497,95 @@ def startTestChargeDischarge():
     global TEST
     global DEVICE 
     global DEVICEMOD
+    global CHARGE
     DEVICE = devices.electLoad
     DEVICEMOD ="EL"
     profile = TEST.action.function()
     startProfileEL(0, 5, devices.electLoad)
-    interrupt = Thread(target=Counter, args=(SAMPLING_RATE,TEST.id,DEVICE,DEVICEMOD,)) #mettre au point le device en global et changer quand on change de device
+    interrupt = Thread(target=Counter, args=(SAMPLING_RATE,TEST.id,DEVICE,DEVICEMOD,))
     interrupt.start()
 
     while (True):
         
-        semVISA.acquire()
+        
         startTime = time.time()
         ampl = profile.getAmpl()
         timePulsing = profile.getTimePulsing()
-        if(ampl>0):
+        print(f"time:{timePulsing}, ampl:{ampl}")
+        
+        if(ampl==0):
+            if CHARGE == 1:
+                semVISA.acquire()
+                routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+                semVISA.release()
+            if CHARGE == -1:
+                semVISA.acquire()
+                routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+                semVISA.release()
+
+            print("wait")
+            
+            # routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+            print("on envoie l info au device")
+            semArduino.acquire()
+            print("on actionne les relay")
+            serialComm.send_data("relay2=off\n")
+            serialComm.send_data("relay1=on\n")
+            semArduino.release()
+            print("on demarre le profil")
+            
+            CHARGE = 0
             DEVICE = devices.electLoad
             DEVICEMOD ="EL"
-            routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+            print("c'est parti")
+        elif(ampl>0):
+            if CHARGE == 1:
+                semVISA.acquire()
+                routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+                semVISA.release()
+            print("discharge")
+            CHARGE=-1
+            DEVICE = devices.electLoad
+            DEVICEMOD ="EL"
+            print("on envoie l info au device")
+            # routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+            semArduino.acquire()
+            print("on actionne les relay")
             serialComm.send_data("relay1=off\n")
             serialComm.send_data("relay2=on\n")
+            semArduino.release()
+            print("on demarre le profil")
+            semVISA.acquire()
             startProfileEL(ampl*TEST.cellsList[0].Qn, 5, devices.electLoad)
             routine = sohRoutine(lambda:output(1, devices.electLoad, "EL"),devices.electLoad)
-        if(ampl<0):
-            DEVICE = devices.pwrSupply
-            DEVICE ="PS"
-            routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+            semVISA.release()
+            
+            
+        elif(ampl<0):
+            if CHARGE == -1:
+                semVISA.acquire()
+                routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+                semVISA.release()
+            print("charge")
+            ampl=-ampl
+            # routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
+            print("on envoie l info au device")
+            semArduino.acquire()
+            print("on actionne les relay")
             serialComm.send_data("relay2=off\n")
             serialComm.send_data("relay1=on\n")
+            semArduino.release()
+            print("on demarre le profil")
+            semVISA.acquire()
             startProfilePS(ampl,devices.pwrSupply)
             routine = sohRoutine(lambda:output(1, devices.pwrSupply, "PS"),devices.pwrSupply)
-        if(ampl==0):
-            DEVICE = devices.electLoad
-            DEVICE ="EL"
-            routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
-            serialComm.send_data("relay2=off\n")
-            serialComm.send_data("relay1=on\n")
-            startProfileEL(ampl*TEST.cellsList[0].Qn, 5, devices.electLoad)
-            routine = sohRoutine(lambda:output(0, devices.electLoad, "EL"),devices.electLoad)
-        semVISA.release()
+            semVISA.release()
+            print("c est parti")
+            CHARGE=1
+            DEVICE = devices.pwrSupply
+            DEVICEMOD ="PS"
+        
+        
 
         while (time.time() - startTime < timePulsing):
             print("timePulsing")
@@ -525,12 +597,15 @@ def startTestChargeDischarge():
 
             voltage = str(round(float(voltage), 3))
             global killThread
-            if(verifyCellVmin(float(voltage),TEST.cellsList) or killThread == True or verifyCurrentMin(float(current),TEST.cellsList)):
+            print("avant test")
+            if((verifyCellVmin(float(voltage),TEST.cellsList) and CHARGE==-1) or killThread == True or (verifyCurrentMin(float(current),TEST.cellsList) and CHARGE == 1)):
                 importRoute.test.post(TEST.id,0)
                 killThread = True
                 semVISA.acquire()
+                semArduino.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")
+                semArduino.release()
                 routine = sohRoutine(lambda:output(0, DEVICE, DEVICEMOD),DEVICE)
                 print("We turn off everything before leaving")
                 sendMessage.sendMessage("Test is over")
@@ -578,24 +653,32 @@ def setTest(test):
     random.seed(SEED)
 
     if TEST.action.chargeBool and TEST.action.dischargeBool==0 :
+        semArduino.acquire()
         serialComm.send_data("relay2=off\n")
         serialComm.send_data("relay1=on\n")
+        semArduino.release()
         startTestCharge()
     elif TEST.action.dischargeBool and TEST.action.chargeBool==0 :
+        semArduino.acquire()
         serialComm.send_data("relay1=off\n")
         serialComm.send_data("relay2=on\n")
+        semArduino.release()
         startTestDischarge()
     elif TEST.action.dischargeBool and TEST.action.chargeBool :
         startTestChargeDischarge()
 
 
 def measureAmbient():
+    semArduino.acquire()
     temperature=serialComm.send_data("ambientTemperature?\n")
+    semArduino.release()
     return temperature
 
 def getArduinoStatus():
     try:
+        semArduino.acquire()
         temp = serialComm.send_data("ambientTemperature?\n")
+        semArduino.release()
         return True
     except:
         return False
@@ -604,7 +687,7 @@ def getDeviceStatus():
     try:
         temp = configMeasureQuery(devices.electLoad, "VOLT")
         temp = configMeasureQuery(devices.pwrSupply, "VOLT")
-        print(temp)
+        # print(temp)
         return True
     except:
         return False
@@ -613,7 +696,7 @@ def getDeviceStatus():
 def getBMSStatus():
     try:
         temp = bms.measure(1)
-        print(temp)
+        # print(temp)
         return True
     except:
         return False

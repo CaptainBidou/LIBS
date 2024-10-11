@@ -46,14 +46,13 @@ def write_read(x):
 def send_data(data):
 	result = write_read(bytes(str(parser(data)), 'utf-8'))
 	stringRes = result.decode('utf-8')
-	print(stringRes)
+	# print(stringRes)
 	floatRes = float(stringRes)
 	return floatRes
 
 
 send_data("relay1=off\n")
 send_data("relay2=off\n")
-
 if __name__ == '__main__':
 	while True:
 		data = input("Enter data to send: ") 
