@@ -43,7 +43,7 @@ semArduino = threading.BoundedSemaphore(1)
 def calculIt(value):
     global TEST
     # print(TEST)
-    return float(value)*TEST.cellsList[0].Qn
+    return round(float(value)*TEST.cellsList[0].Qn,3)
 
 def verifyCellVmin(volt,cells):
     if(len(TEST.cellsList)>1):
@@ -388,7 +388,7 @@ def startTestDischarge():
             voltage = str(round(float(voltage), 3))
             global killThread
             if(verifyCellVmin(float(voltage),TEST.cellsList) or killThread == True):
-                importRoute.test.post(TEST.id,0)
+                
                 killThread = True
                 semVISA.acquire()
                 semArduino.acquire()
@@ -399,6 +399,7 @@ def startTestDischarge():
                 print("We turn off everything before leaving")
                 sendMessage.sendMessage("Test is over")
                 semVISA.release()
+                importRoute.test.post(TEST.id,0)
                 exit()
             time.sleep(SAMPLING_RATE)
         timeResting = profile.getTimeResting()
@@ -467,29 +468,25 @@ def startTestCharge():
     routine = sohRoutine(lambda:output(1, devices.pwrSupply, "PS"),devices.pwrSupply)
     semVISA.release()
     while (True):
-        while(time.time() - startTime < timePulsing):
-            semVISA.acquire()
-            output(1,devices.pwrSupply,"PS")
-            semVISA.release()
-            time.sleep(SAMPLING_RATE)
-        startTime = time.time()
-        while(time.time() - startTime < timeResting):
+        while(True):
             semVISA.acquire()
             current = configMeasureQuery(devices.pwrSupply, "CURR")
             current = str(round(float(current), 3))
             semVISA.release()
+            print("Time Pulsing")
             global killThread
             if(verifyCurrentMin(float(current),TEST.cellsList) or killThread):
-                importRoute.test.post(TEST.id,0)
                 killThread = True
                 semVISA.acquire()
+                routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
+                print("We turn off everything before leaving")
+                sendMessage.sendMessage("Test is over")
+                semVISA.release()
+                importRoute.test.post(TEST.id,0)
                 semArduino.acquire()
                 serialComm.send_data("relay2=off\n")
                 serialComm.send_data("relay1=off\n")
-                routine = sohRoutine(lambda:output(0, devices.pwrSupply, "PS"),devices.pwrSupply)
                 semArduino.release()
-                semVISA.release()
-                sendMessage.sendMessage("Test is over")
                 exit()
             time.sleep(SAMPLING_RATE)
 

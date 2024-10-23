@@ -38,12 +38,14 @@ def parser(string):
 		
 
 def write_read(x): 
+	time.sleep(0.05)
 	arduino.write(x) 
 	time.sleep(0.05) 
 	data = arduino.readline() 
 	return data 
 
 def send_data(data):
+
 	result = write_read(bytes(str(parser(data)), 'utf-8'))
 	stringRes = result.decode('utf-8')
 	# print(stringRes)

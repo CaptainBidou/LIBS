@@ -122,8 +122,7 @@ def handleRoutePost(route,param):
         tab2 = []
         for a in tab:
             tab2.append(importDatabase.Test.test(a))
-        if (tab2[0].running_bool==0):
-            importRoute.test.post(param["id"],1)
+        importRoute.test.post(param["id"],1)
         samplerRoute.killThread = False
         thread = Thread(target=samplerRoute.setTest, args=(tab2[0],))
         thread.start()
@@ -135,10 +134,9 @@ def handleRoutePost(route,param):
         for a in tab:
             tab2.append(importDatabase.Test.test(a))
         test=tab2[0]
-        if(test.running_bool):
-            importRoute.test.post(param["id"],0)
-            samplerRoute.killThread =True
-            test.running_bool = 0
+        importRoute.test.post(param["id"],0)
+        samplerRoute.killThread =True
+        test.running_bool = 0
         return test.toString()
     pass
 

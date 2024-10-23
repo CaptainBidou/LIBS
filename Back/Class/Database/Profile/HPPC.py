@@ -2,7 +2,7 @@ import Class.Database.Profile.ProfileAbstract as ProfileAbstract
 class HppcProfile(ProfileAbstract.Profile):
     def __init__(self):
         self.step = 0
-        self.ampl = [ - 1.95, 0, -1.46, 0.1]
+        self.ampl = [ 1.95, 0, -1.46, 0.1]
         self.timeResting = 0
         self.timePulsing = [18,32,10,360]
 
