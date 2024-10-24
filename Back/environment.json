@@ -1,7 +1,7 @@
 {
-    "production": true,
-    "HOST": "192.168.1.103",
+    "production": false,
+    "HOST": "127.0.0.1",
     "PORT": 5000,
-    "BMS":"192.168.1.102",
-    "ARDUINO":"COM8"
+    "BMS":"127.0.0.1:100",
+    "ARDUINO":"COM0"
 }

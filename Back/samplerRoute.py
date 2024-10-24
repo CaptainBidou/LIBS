@@ -697,3 +697,15 @@ def getBMSStatus():
         return True
     except:
         return False
+
+
+def runHealthTest(healthTest):
+    for i in range(0,len(healthTest.testsList)):
+       importRoute.test.post(healthTest.testsList[i].id,1)
+       setTest(healthTest.testsList[i])
+       importRoute.test.post(healthTest.testsList[i].id,0)
+       time.sleep(healthTest.timeRestsList[i])
+       global killThread
+       killThread = False
+    print("end of the health test")
+    exit()

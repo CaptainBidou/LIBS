@@ -34,10 +34,10 @@ def handleRouteGet(route,param):
         # print(param)
         return "{}"
     if route == "/cell":
-        tab = importRoute.cell.get(param)
+        tab = importRoute.cell.get(param) # get the cells from the database
         tab2 = []
         for a in tab :
-            tab2.append(importDatabase.Cell.cell(a).toString())
+            tab2.append(importDatabase.Cell.cell(a).toString()) # convert the cells into json in the tab2
         return tab2
     if route == "/action":
         tab = importRoute.action.get(param)
@@ -138,6 +138,14 @@ def handleRoutePost(route,param):
         samplerRoute.killThread =True
         test.running_bool = 0
         return test.toString()
+    if route == "/health_test_start":
+        tab = importRoute.health_test.post(importDatabase.HealthTest.health_testConstruct(param))
+        tab2 = []
+        for a in tab:
+            tab2.append(importDatabase.HealthTest.health_test(a))
+        samplerRoute.killThread = False
+        thread = Thread(target=samplerRoute.runHealthTest, args=(tab2[0],))
+        thread.start()
     pass
 
 def handleRoutePut(route,param):
